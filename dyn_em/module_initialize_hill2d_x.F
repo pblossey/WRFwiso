@@ -124,12 +124,40 @@ CONTAINS
    LOGICAL :: moisture_init
    LOGICAL :: stretch_grid, dry_sounding
 
-   REAL    :: xa1, xal1,pii,hm1  !  data for intercomparison setup from dale
+   REAL    :: xa1, xal1,hm1  !  data for intercomparison setup from dale
 
    REAL    :: B1, B2, B3, B4, B5, sin_arg
 
    REAL    :: Nsq, z, z1, z2
    INTEGER :: iter_loop
+
+!..Begin additions (bloss)
+
+   ! G. Thompson additions for reading in vertical levels from external file
+   LOGICAL :: read_grid_from_file
+   INTEGER :: nlevels
+   CHARACTER (LEN=16) :: file_eta_levels = 'sigmaw.dat'
+
+   ! bloss additions for using namelist to specify topography and other parameters
+   LOGICAL :: have_prm_file
+   INTEGER :: ierr, ierr_missing_namelist, terrain_type
+   REAL    :: hill_latitude, hill_longitude, placeholder, xarg
+
+   !bloss: Supply parameters for topography and vertical grid through a
+   !         namelist called "em_hill2d_x"
+   NAMELIST /EM_HILL2D_X/ terrain_type, hm, xa, xa1, xal1, hm1, &
+        stretch_grid, z_scale, hill_latitude, hill_longitude, &
+        read_grid_from_file, file_eta_levels
+
+   !bloss: Make a namelist that shouldn't ever be in the prm file.
+   !  This lets you diagnose whether the namelist was missing or
+   !  if there was an error reading the namelist.  My feeling is
+   !  that there shouldn't be an error if the (optional) namelist is
+   !  missing but that the run should stop if the EM_HILL2D_X namelist
+   !  was in the file but there was an error reading it.
+   NAMELIST /bydswioubnuOZBSda/ placeholder
+
+!..End additions (bloss)
 
    SELECT CASE ( model_data_order )
          CASE ( DATA_ORDER_ZXY )
@@ -171,23 +199,82 @@ CONTAINS
 
    END SELECT
 
-
-   hm = 100.
-   xa = 5.0
-
-   icm = ide/2
-
-
-   xa1  = 5000./500.
-   xal1 = 4000./500.
-   pii  = 2.*asin(1.0)
-   hm1  = 250.
-!   hm1  = 1000.
-
-
    stretch_grid = .true.
 !   z_scale = .50
    z_scale = .40
+
+   !..Begin addition (bloss)
+   !bloss: set initial values for parameters that can be modified through
+   !         EM_HILL2D_X namelist
+   terrain_type = 1 ! 0=flat surface, 1=witch of Agnesi,
+                    ! 2=gaussian*cosine hill, 3=cosine**4 hill
+
+   ! terrain type==1, Witch of Agnesi
+   hm = 100. ! height in m
+   xa = 10.e3  ! half-width in m
+
+   ! terrain type==2, gaussian*cosine hill
+   hm1  = 250. ! height in m
+   xa1  = 5000. ! half-width of gaussian in m
+   xal1 = 4000. ! half-wavelength of cosine in m
+   icm = ide/2
+
+   ! vertical grid options
+   read_grid_from_file = .false.
+   ! lat/lon options (important for coriolis/radiation if enabled).
+   hill_latitude = 40.
+   hill_longitude = -105.
+
+   ! check for file with namelist.  open and read in namelist if it exists.
+   INQUIRE(FILE='prm',EXIST=have_prm_file)
+   if(have_prm_file) then
+     OPEN(UNIT=94,FILE='prm',FORM='formatted')
+     READ(94,NML=EM_HILL2D_X,IOSTAT=ierr)
+     if(ierr.eq.0) then
+       write(6,*) 'Read EM_HILL2D_X namelist from prm file'
+     else
+       REWIND(94)
+       READ(94,NML=bydswioubnuOZBSda,IOSTAT=ierr_missing_namelist)
+       if(ierr_missing_namelist.eq.0) then
+         write(6,*) 'Please remove the bydswioubnuOZBSda namelist from '
+         write(6,*) ' your prm file.  Its absence is important in diagnosing'
+         write(6,*) ' errors in reading the EM_HILL2D_X namelist.'
+         STOP 'REMOVE bydswioubnuOZBSda NAMELIST FROM PRM FILE'
+       end if
+       if(ierr.eq.ierr_missing_namelist) then
+         write(6,*) 'No EM_HILL2D_X namelist found in prm file'
+         write(6,*) 'Running with default parameter choices'
+       else
+         write(6,*) 'Error reading EM_HILL2D_X namelist from prm file'
+         READ(94,NML=EM_HILL2D_X)
+       end if
+     end if
+     CLOSE(94)
+   end if
+
+   ! output useful information about terrain to standard output
+   SELECT CASE (terrain_type)
+     CASE (0)
+       write(6,*) 'Terrain is flat ground: grid%ht(:,:) = 0.'
+     CASE (1)
+       write(6,992) hm
+       write(6,993) xa
+992    format('Terrain is a Witch of Agnesi mountain with height ',F8.2,' meters'
+993    format('   and half-width ',F8.2,' meters.')
+     CASE (2)
+       write(6,994) hm1
+       write(6,995) xa1, xal1
+994    format('Terrain is a gaussian/cosine hill with height ',F8.2,' meters,'
+995    format('   gaussian half-width ',F8.2,' meters, and cosine half-wavelength ',F8,2,' meters.')
+     CASE (3)
+       write(6,996) hm
+       write(6,997) xa
+996    format('Terrain is a cosine bell raised to the fourth power with height ',F8.2,' meters'
+997    format('   and quarter width ',F8,2,' meters.')
+     END SELECT
+     write(6,*)
+   !..End addition (bloss)
+
    pi = 2.*asin(1.0)
    write(6,*) ' pi is ',pi
    nxc = (ide-ids)/4
@@ -210,8 +297,8 @@ CONTAINS
 
     CALL nl_set_mminlu(1,'    ')
     CALL nl_set_iswater(1,0)
-    CALL nl_set_cen_lat(1,40.)
-    CALL nl_set_cen_lon(1,-105.)
+    CALL nl_set_cen_lat(1,hill_latitude) !bloss
+    CALL nl_set_cen_lon(1,hill_longitude) !bloss
     CALL nl_set_truelat1(1,0.)
     CALL nl_set_truelat2(1,0.)
     CALL nl_set_moad_cen_lat (1,0.)
@@ -253,6 +340,23 @@ CONTAINS
 
 ! set up the grid
 
+   !..Begin addition
+   IF (read_grid_from_file) THEN
+     !bloss:  Use code supplied by Greg Thompson to reading in user-specified full sigma levels.
+     open(unit=81,file=file_eta_levels,form='formatted',status='old')
+     read(81,*) nlevels
+     if(kde.ne.nlevels)then
+       write(6,*) ' vertical level mismatch (kde ne nlevels) kde, nlevels ',kde, nlevels
+       call wrf_error_fatal ( ' problem with vertical levels kde ne nlevels ' )
+     endif
+     do k=1, nlevels
+       read(81,*) grid%znw(k)
+       print*,'    k, znw(k)= ',k,grid%znw(k)
+     enddo
+     close(unit=81,status = 'keep')
+     !..End addition
+   ELSE
+
    IF (stretch_grid) THEN ! exponential stretch for eta (nearly constant dz)
      DO k=1, kde
       grid%znw(k) = (exp(-(k-1)/float(kde-1)/z_scale) - exp(-1./z_scale))/ &
@@ -263,6 +367,8 @@ CONTAINS
       grid%znw(k) = 1. - float(k-1)/float(kde-1)
      ENDDO
    ENDIF
+
+   ENDIF !bloss
 
    DO k=1, kde-1
     grid%dnw(k) = grid%znw(k+1) - grid%znw(k)
@@ -406,12 +512,53 @@ CONTAINS
    END DO
 #endif
 
+  !..Begin addition (bloss): options for topography type controlled by namelist.
   DO j=jts,jte
-  DO i=its,ite  ! flat surface
-!!    grid%ht(i,j) = 0.
-    grid%ht(i,j) = hm/(1.+(float(i-icm)/xa)**2)
-!    grid%ht(i,j) = hm1*exp(-(( float(i-icm)/xa1)**2))   &
-!               *( (cos(pii*float(i-icm)/xal1))**2 )
+    DO i=its,ite  
+      grid%ht(i,j) = 0. ! initialize terrain to a flat surface with zero height.
+    ENDDO
+  ENDDO
+
+  SELECT CASE (terrain_type) 
+  CASE (0) 
+    ! flat surface, nothing to do
+  CASE (1) 
+    ! Witch of Agnesi -- default
+    DO j=jts,jte
+      DO i=its,ite  
+        grid%ht(i,j) = hm/(1.+(config_flags%dx*float(i-icm)/xa)**2)
+      ENDDO
+    ENDDO
+
+  CASE (2) 
+    ! gaussian-cosine blend
+    !  comment above reads: data for intercomparison setup from dale
+    DO j=jts,jte
+      DO i=its,ite  
+        grid%ht(i,j) = hm1*exp(-(( config_flags%dx*float(i-icm)/xa1)**2))   &
+             *( (cos(pi*config_flags%dx*float(i-icm)/xal1))**2 )
+      ENDDO
+    ENDDO
+
+  CASE (3) 
+    ! cosine**4 bell
+    !   Based on Muhlbauer et al (2010, ACP, doi:10.5194/acp-10-8173-2010)
+    DO j=jts,jte
+      DO i=its,ite  
+        xarg = config_flags%dx*float(i-icm)
+        if(ABS(xarg).lt.4.*xa) then ! mountain exists for |x-x0| < 4*a0, Muhl eqn 2.
+          grid%ht(i,j) = (hm/16.)*( 1. + cos(pi*xarg/(4.*xa)) )**4
+        end if
+      ENDDO
+    ENDDO
+
+  CASE DEFAULT
+    STOP 'Bad terrain_type in module_initialize_hill2d_x.F'
+  END SELECT
+  !..End addition
+
+  DO j=jts,jte
+  DO i=its,ite  
     grid%phb(i,1,j) = g*grid%ht(i,j)
     grid%php(i,1,j) = 0.
     grid%ph0(i,1,j) = grid%phb(i,1,j)
@@ -754,7 +901,7 @@ CONTAINS
       integer n, iz
       parameter(n=1000)
       logical debug
-      parameter( debug = .false.)
+      parameter( debug = .true.) !bloss: output sounding by default
 
 ! input sounding data
 
