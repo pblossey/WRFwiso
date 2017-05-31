@@ -59,6 +59,8 @@ CONTAINS
     USE module_sfs_driver !JDM
     USE module_stoch, ONLY : update_stoch_ten, perturb_physics_tend,RAND_PERT_UPDATE
 
+    USE MODULE_WRF_ERROR !bloss/wiso: allows optional output of max/min check on blten
+
 
     IMPLICIT NONE
 
@@ -321,6 +323,8 @@ BENCH_START(cal_phy_tend)
                      grid%rthraten,                                    &
                      grid%rublten,grid%rvblten,grid%rthblten,          &
                      grid%rqvblten,grid%rqcblten,grid%rqiblten,        &
+                     grid%rhdo_qvblten,grid%rhdo_qcblten,grid%rhdo_qiblten,        & !bloss/wiso
+                     grid%ro18_qvblten,grid%ro18_qcblten,grid%ro18_qiblten,        & !bloss/wiso
                      grid%rucuten,grid%rvcuten,grid%rthcuten,          &
                      grid%rqvcuten,grid%rqccuten,grid%rqrcuten,        &
                      grid%rqicuten,grid%rqscuten,                      &
@@ -683,6 +687,8 @@ BENCH_START(update_phy_ten_tim)
                            grid%rvblten,grid%rvcuten,grid%rvshten,          &
                            grid%rqvblten,grid%rqcblten,grid%rqiblten,       &
                            grid%rqniblten,                                  & !CAMUWPBL scheme
+                           grid%rhdo_qvblten,grid%rhdo_qcblten,grid%rhdo_qiblten,       & !bloss/wiso
+                           grid%ro18_qvblten,grid%ro18_qcblten,grid%ro18_qiblten,       & !bloss/wiso
                            grid%rqvcuten,grid%rqccuten,grid%rqrcuten,       &
                            grid%rqicuten,grid%rqscuten,                     &
                            grid%rqcncuten,grid%rqincuten,                   & !BSINGH - Added two CU tends
@@ -704,6 +710,15 @@ BENCH_START(update_phy_ten_tim)
        END DO
        !$OMP END PARALLEL DO
 BENCH_END(update_phy_ten_tim)
+
+      if(wrf_at_debug_level(120)) then 
+        !bloss/wiso: add option to check size of isotopic tendencies from BL scheme.
+        write(*,*) 'MAX/MIN QVTEND = ', MAXVAL(moist_tend(:,:,:,p_qv)), MINVAL(moist_tend(:,:,:,p_qv))
+        if(p_hdo_qv.ge.2) write(*,*) 'MAX/MIN HDO_QVTEND = ', &
+             MAXVAL(scalar_tend(:,:,:,p_hdo_qv)), MINVAL(scalar_tend(:,:,:,p_hdo_qv))
+        if(p_o18_qv.ge.2) write(*,*) 'MAX/MIN O18_QVTEND = ', &
+             MAXVAL(scalar_tend(:,:,:,p_o18_qv)), MINVAL(scalar_tend(:,:,:,p_o18_qv))
+      end if
 
       IF (grid%skebs_on==1) then
           !$OMP PARALLEL DO   &
@@ -834,7 +849,7 @@ BENCH_START(vert_diff_tim)
                                       grid%div, moist, chem, scalar,tracer,         &
                                       grid%xkmv, grid%xkhv, grid%xkmh, config_flags%km_opt,       & ! xkmh added Oct2013
                                       grid%fnm, grid%fnp, grid%dn, grid%dnw, grid%rdz, grid%rdzw, &
-                                      grid%hfx, grid%qfx, grid%ustm, grid%rho,   &
+                                      grid%hfx, grid%qfx, grid%hdo_qfx, grid%o18_qfx, grid%ustm, rho,        & !bloss/wiso
                                       ids, ide, jds, jde, kds, kde,              &
                                       ims, ime, jms, jme, kms, kme,              &
                                       grid%i_start(ij), grid%i_end(ij),          &

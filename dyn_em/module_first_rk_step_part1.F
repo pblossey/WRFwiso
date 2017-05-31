@@ -462,6 +462,12 @@ BENCH_START(surf_driver_tim)
      &        ,BLDTACTTIME=grid%bldtacttime                                              & 
      &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,Q10=grid%q10            &
      &        ,Q2=grid%q2              ,QFX=grid%qfx            ,QSFC=grid%qsfc          &
+     &        ,HDO_QFX=grid%hdo_qfx                                                     &
+     &        ,R_HDO_SURF=grid%r_hdo_surf &
+     &        ,HDO_QV=scalar(ims,kms,jms,P_HDO_QV)  & ! romps/bloss/wiso
+     &        ,O18_QFX=grid%o18_qfx                                                     &
+     &        ,R_O18_SURF=grid%r_o18_surf &
+     &        ,O18_QV=scalar(ims,kms,jms,P_O18_QV)  & ! romps/bloss/wiso
      &        ,QSHLTR=grid%qshltr      ,QZ0=grid%qz0            ,RAINCV=grid%raincv      &
      &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics         ,RHO=grid%rho            &
      &        ,RMOL=grid%rmol          ,SFCEVP=grid%sfcevp      ,SFCEXC=grid%sfcexc      &
@@ -919,6 +925,19 @@ BENCH_START(pbl_driver_tim)
      &        ,QS_CURR=moist(ims,kms,jms,P_QS), F_QS=F_QS                 &
      &        ,QG_CURR=moist(ims,kms,jms,P_QG), F_QG=F_QG                 &
      &        ,HOL=HOL, MOL=grid%mol, REGIME=grid%REGIME                  &
+!bloss/wiso: Current values and bl tendencies for water isotopologues (optional)
+     &        ,RHDO_QVBLTEN=grid%rhdo_qvblten                             &
+     &        ,RHDO_QCBLTEN=grid%rhdo_qcblten                             &
+     &        ,RHDO_QIBLTEN=grid%rhdo_qiblten                             &
+     &        ,HDO_QV_CURR=scalar(ims,kms,jms,P_HDO_QV), F_HDO_QV=F_HDO_QV&
+     &        ,HDO_QC_CURR=scalar(ims,kms,jms,P_HDO_QC), F_HDO_QC=F_HDO_QC&
+     &        ,HDO_QI_CURR=scalar(ims,kms,jms,P_HDO_QI), F_HDO_QI=F_HDO_QI&
+     &        ,RO18_QVBLTEN=grid%ro18_qvblten                             &
+     &        ,RO18_QCBLTEN=grid%ro18_qcblten                             &
+     &        ,RO18_QIBLTEN=grid%ro18_qiblten                             &
+     &        ,O18_QV_CURR=scalar(ims,kms,jms,P_O18_QV), F_O18_QV=F_O18_QV&
+     &        ,O18_QC_CURR=scalar(ims,kms,jms,P_O18_QC), F_O18_QC=F_O18_QC&
+     &        ,O18_QI_CURR=scalar(ims,kms,jms,P_O18_QI), F_O18_QI=F_O18_QI&
 !mynn mp@
      &        ,QKE=grid%qke, Sh3d=grid%sh3d                               &
      &        ,QKE_ADV=scalar(ims,kms,jms,P_qke_adv)                      & !ACF-QKE advection
