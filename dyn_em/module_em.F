@@ -41,8 +41,9 @@ MODULE module_em
 	vertical_diffusion_v, vertical_diffusion, vertical_diffusion_3dmp, sixth_order_diffusion, rk_rayleigh_damp, &
         theta_relaxation, vertical_diffusion_mp, zero_tend, zero_tend2d
 	
-   USE module_state_description, only: param_first_scalar, p_qr, p_qv, p_qc, p_qg, p_qi, p_qs, tiedtkescheme,ntiedtkescheme, heldsuarez, &
-        positivedef, gdscheme, g3scheme, gfscheme, kfetascheme, mskfscheme, monotonic, wenopd_scalar, weno_scalar, weno_mom
+   USE module_state_description, only: param_first_scalar, p_qr, p_qv, p_qc, p_qg, p_qi, p_qs, tiedtkescheme, heldsuarez, &
+        positivedef, gdscheme, g3scheme, gfscheme, kfetascheme, monotonic, wenopd_scalar, weno_scalar, weno_mom, &
+        p_hdo_qv, p_o18_qv !bloss/wiso
 	
    USE module_damping_em, only: held_suarez_damp
 
@@ -1850,6 +1851,8 @@ SUBROUTINE calculate_phy_tend (config_flags,c1,c2,                     &
                      RTHRATEN,                                         &
                      RUBLTEN,RVBLTEN,RTHBLTEN,                         &
                      RQVBLTEN,RQCBLTEN,RQIBLTEN,                       &
+                     RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN,           & !bloss/wiso
+                     RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN,           & !bloss/wiso
                      RUCUTEN,RVCUTEN,RTHCUTEN,                         &
                      RQVCUTEN,RQCCUTEN,RQRCUTEN,                       &
                      RQICUTEN,RQSCUTEN,                                &
@@ -1921,6 +1924,11 @@ SUBROUTINE calculate_phy_tend (config_flags,c1,c2,                     &
                                                              RQVBLTEN, &
                                                              RQCBLTEN, &
                                                              RQIBLTEN
+
+      REAL,     DIMENSION( ims:ime, kms:kme, jms:jme )               , &
+                INTENT(INOUT), OPTIONAL   ::                           &
+                RHDO_QVBLTEN, RHDO_QCBLTEN, RHDO_QIBLTEN               & !bloss/wiso
+              , RO18_QVBLTEN, RO18_QCBLTEN, RO18_QIBLTEN
 
 ! fdda
 
@@ -2135,6 +2143,32 @@ SUBROUTINE calculate_phy_tend (config_flags,c1,c2,                     &
          DO K=kts,ktf
          DO I=its,itf
             RQIBLTEN(I,K,J)=mut(I,J)*RQIBLTEN(I,K,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_HDO_QV .ge. PARAM_FIRST_SCALAR) THEN
+        !bloss/wiso: assume all three tendencies are present if we have HDO_QV
+         DO J=jts,jtf
+         DO K=kts,ktf
+         DO I=its,itf
+            RHDO_QVBLTEN(I,K,J)=mut(I,J)*RHDO_QVBLTEN(I,K,J)
+            RHDO_QCBLTEN(I,K,J)=mut(I,J)*RHDO_QCBLTEN(I,K,J)
+            RHDO_QIBLTEN(I,K,J)=mut(I,J)*RHDO_QIBLTEN(I,K,J)
+         ENDDO
+         ENDDO
+         ENDDO
+    ENDIF
+
+      IF (P_O18_QV .ge. PARAM_FIRST_SCALAR) THEN
+        !bloss/wiso: assume all three tendencies are present if we have O18_QV
+         DO J=jts,jtf
+         DO K=kts,ktf
+         DO I=its,itf
+            RO18_QVBLTEN(I,K,J)=mut(I,J)*RO18_QVBLTEN(I,K,J)
+            RO18_QCBLTEN(I,K,J)=mut(I,J)*RO18_QCBLTEN(I,K,J)
+            RO18_QIBLTEN(I,K,J)=mut(I,J)*RO18_QIBLTEN(I,K,J)
          ENDDO
          ENDDO
          ENDDO
