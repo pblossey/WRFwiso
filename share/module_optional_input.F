@@ -3,11 +3,14 @@ MODULE module_optional_input
    INTEGER :: flag_metgrid  , flag_tavgsfc  , flag_psfc     , flag_soilhgt  , flag_mf_xy , flag_slp , &
               flag_snow     , flag_snowh    , flag_tsk      , flag_pinterp  , flag_prho
 
+   !bloss/wiso: Added flags for isotopic vapor and surface waters (input as deltaD and deltaO18)
    INTEGER :: flag_qv       , flag_qc       , flag_qr       , flag_qi       , flag_qs       , &
               flag_qg       , flag_qh       , &
               flag_qni      , flag_qnr      , &
               flag_qnwfa    , flag_qnifa    , &
-              flag_sh       , flag_speccldl , flag_speccldf
+              flag_sh       , flag_speccldl , flag_speccldf, &
+              flag_dhdov    , flag_do18v    , & !bloss/wiso
+              flag_dhdosurf  , flag_do18surf    !bloss/wiso
 
    INTEGER :: flag_soil_levels, flag_soil_layers
 
@@ -321,6 +324,11 @@ USE module_io_domain
       flag_sh       = 0
       flag_speccldl = 0
       flag_speccldf = 0
+      !bloss/wiso: adding deltaHDO/deltaO18 vapor and surface water
+      flag_dhdov    = 0
+      flag_do18v    = 0
+      flag_dhdosurf  = 0
+      flag_do18surf  = 0
 
       flag_name(1:8) = 'QV      '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
@@ -393,6 +401,31 @@ USE module_io_domain
          flag_speccldf = itmp
       END IF
     
+!..Begin addition (bloss/wiso): adding deltaHDO/deltaO18 vapor and surface water
+
+      flag_name(1:8) = 'dHDOV   '
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_dhdov    = itmp
+      END IF
+      flag_name(1:8) = 'dO18V   '
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_do18v    = itmp
+      END IF
+      flag_name(1:8) = 'dHDOSURF'
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_dhdosurf  = itmp
+      END IF
+      flag_name(1:8) = 'dO18SURF'
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_do18surf  = itmp
+      END IF
+
+!..End addition (bloss/wiso)
+
    END SUBROUTINE optional_moist
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
