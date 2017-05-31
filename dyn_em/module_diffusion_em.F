@@ -8,7 +8,7 @@
     MODULE module_diffusion_em
 
     USE module_bc, only: set_physical_bc3d
-    USE module_state_description, only: p_m23, p_m13, p_m22, p_m33, p_r23, p_r13, p_r12, p_m12, p_m11
+    USE module_state_description, only: p_m23, p_m13, p_m22, p_m33, p_r23, p_r13, p_r12, p_m12, p_m11, p_hdo_qv, p_o18_qv !bloss/wiso
     USE module_big_step_utilities_em, only: grid_config_rec_type, param_first_scalar, p_qv, p_qi, p_qc
     USE module_model_constants
 
@@ -3401,7 +3401,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                     moist,chem,scalar,tracer,                 &
                                     xkmv,xkhv,xkmh,km_opt,                    & ! xkmh added
                                     fnm, fnp, dn, dnw, rdz, rdzw,             &
-                                    hfx, qfx, ust, rho,                       &
+                                    hfx, qfx, hdo_qfx, o18_qfx, ust, rho,     & !bloss/wiso
                                     ids, ide, jds, jde, kds, kde,             &
                                     ims, ime, jms, jme, kms, kme,             &
                                     its, ite, jts, jte, kts, kte              )
@@ -3478,6 +3478,8 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
    REAL , DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(IN   )   :: rho
    REAL , DIMENSION( ims:ime, jms:jme), INTENT(INOUT)            :: hfx,  &
                                                                     qfx
+   REAL , DIMENSION( ims:ime, jms:jme), OPTIONAL, INTENT(INOUT)  :: hdo_qfx,  & !bloss/wiso
+                                                                    o18_qfx
    REAL , DIMENSION( ims:ime, jms:jme), INTENT(IN   )            :: ust
    REAL , DIMENSION( ims:ime, kms:kme, jms:jme), INTENT(INOUT) ::    thp
 
@@ -3824,6 +3826,42 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
                                      ids, ide, jds, jde, kds, kde,         &
                                      ims, ime, jms, jme, kms, kme,         &
                                      its, ite, jts, jte, kts, kte         )
+
+          !bloss/wiso: Adjust tendencies for isotopic variants of water vapor
+          !   to account for surface fluxes.  Mimicks treatment of moist(:,:,:,P_QV) above.
+          qflux_iso: SELECT CASE( config_flags%isfflx )
+          CASE (0)
+            ! do nothing
+          CASE (1,2) ! with surface moisture flux 
+
+            IF(PRESENT(HDO_QFX)) THEN
+              IF ( im == P_HDO_QV ) THEN
+                DO j = j_start, j_end
+                  DO i = i_start, i_end
+                    moist_flux = hdo_qfx(i,j)
+                    scalar_tendf(i,kts,j,im)=scalar_tendf(i,kts,j,im)  &
+                         -g*moist_flux/dnw(kts)
+                  ENDDO
+                ENDDO
+              ENDIF
+            END IF
+
+            IF(PRESENT(O18_QFX)) THEN
+              IF ( im == P_O18_QV ) THEN
+                DO j = j_start, j_end
+                  DO i = i_start, i_end
+                    moist_flux = o18_qfx(i,j)
+                    scalar_tendf(i,kts,j,im)=scalar_tendf(i,kts,j,im)  &
+                         -g*moist_flux/dnw(kts)
+                  ENDDO
+                ENDDO
+              ENDIF
+            END IF
+
+          CASE DEFAULT
+            CALL wrf_error_fatal( 'isfflx value invalid for diff_opt=2' )
+          END SELECT qflux_iso
+
      ENDDO scalar_loop
 
    ENDIF
