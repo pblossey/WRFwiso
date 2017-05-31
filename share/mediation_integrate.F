@@ -537,6 +537,8 @@ SUBROUTINE med_nest_initial ( parent , nest , config_flags )
                                 ips , ipe , jps , jpe , kps , kpe )
        ENDIF
 
+       IF(.NOT.config_flags%wisotope) THEN !bloss/wiso
+
        !  adjust temp and qv
 
        CALL adjust_tempqv ( nest%mub , nest%mub_save , &
@@ -545,6 +547,8 @@ SUBROUTINE med_nest_initial ( parent , nest , config_flags )
                             ids , ide , jds , jde , kds , kde , &
                             ims , ime , jms , jme , kms , kme , &
                             ips , ipe , jps , jpe , kps , kpe )
+
+       ENDIF !bloss/wiso
 
      ELSE
        WRITE(message,FMT='(A,I2,A,I2,A)') '*** Initializing nest domain #',nest%id,&
