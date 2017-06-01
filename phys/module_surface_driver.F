@@ -25,7 +25,8 @@ CONTAINS
 #else
      &          ,psim,p_phy,q10,q2,qfx,qsfc,qshltr,qz0                &
 #endif
-     &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff ,acrunoff         &
+     &          ,hdo_qfx,hdo_qv,r_hdo_surf,r_o18_surf,o18_qfx,o18_qv  & !bloss/wiso
+     &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff                   &
      &          ,smois,smstav,smstot,snoalb,snow,snowc,snowh,stepbl   &
      &          ,smcrel                                               &
      &          ,th10,th2,thz0,th_phy,tmn,tshltr,tsk,tslb             &
@@ -359,6 +360,9 @@ CONTAINS
    USE module_sf_lake
    USE module_cpl, ONLY : coupler_on, cpl_rcv
 !
+!bloss/wiso: Needed for isotopic surface fluxes   
+   USE module_mp_water_isotopologues, only: alfaW_equilibrium
+!
 !  This driver calls subroutines for the surface parameterizations.
 !
 !  surface layer: (between surface and pbl)
@@ -443,6 +447,8 @@ CONTAINS
 !-- SNOWC         flag indicating snow coverage (1 for snow cover)
 !-- HFX           net upward heat flux at the surface (W/m^2)
 !-- QFX           net upward moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX           net upward moisture flux at the surface (kg/m^2/s) !bloss/wiso
+!-- O18_QFX           net upward moisture flux at the surface (kg/m^2/s) !bloss/wiso
 !-- TAUX          RHO*U**2 for ocean coupling
 !-- TAUY          RHO*U**2 for ocean coupling
 !-- LH            net upward latent heat flux at surface (W/m^2)
@@ -656,6 +662,12 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   PBLH
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   Q2
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT)::   QFX
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   HDO_QFX !bloss/wiso: isotopic surface moisture flux for HDO
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   O18_QFX !bloss/wiso: isotopic surface moisture flux for H218O
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   R_HDO_SURF !bloss/wiso: isotopic ratio (relative to SMOW) of surface waters for HDO
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   R_O18_SURF !bloss/wiso: isotopic ratio (relative to SMOW) of surface waters for H218O
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL, INTENT(INOUT) :: HDO_QV !bloss/wiso: water vapor mass mixing ratio of HDO (scaled by SMOW, so that HDO_QV==QV when deltaD==0)
+   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL, INTENT(INOUT) :: O18_QV !bloss/wiso: water vapor mass mixing ratio of H218O
 #if (NMM_CORE==1)
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT):: TAUX
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT):: TAUY
@@ -4005,7 +4017,157 @@ CONTAINS
        ENDIF
      ENDIF
 
-   ENDIF
+!..Begin addition (bloss/wiso): Treatment of isotopic surface moisture fluxes
+
+     !bloss: Initial coding by Dave Romps.  Modified to allow specification
+     !  of surface water isotopic composition.  Over land, no fractionation
+     !  during evaporation.  Over water, allow fractionation.
+     IF( PRESENT(HDO_QFX) ) THEN
+
+       IF( PRESENT(R_HDO_SURF) ) THEN
+         ! assume no fractionation (analogous to transpiration over land, 
+         !    sublimation from ice/snow cover).  Not as good for evaporation
+         !    from sea or lake surface.
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+                 hdo_qfx(i,j) = qfx(i,j)*R_HDO_SURF(i,j) 
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+       ELSE
+         !bloss: Asssume surface waters have deltaD=0 and no fractionation during evap.
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+               hdo_qfx(i,j) = qfx(i,j) ! alfaW(1.0,tsk(i,j),0.,1.0,19) ! romps
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+       ENDIF
+
+       ! Now, if the surface is neither ice nor land and we have the isotopic
+       !   composition of surface water and near-surface vapor, let's 
+       !   back out a transfer coefficient and compute the isotopic flux
+       IF( PRESENT(R_HDO_SURF) .AND. PRESENT(HDO_QV) .AND. PRESENT(QV_CURR) ) THEN
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+               IF( (XLAND(I,J).EQ.2).AND.(XICEM(I,J).LT.XICE_THRESHOLD) ) THEN
+                 ! we're over water
+
+                 ! compute sfc air qv and surface sat qv
+                 !  using relations from module_sf_tempfsfclay.F
+                 tmp_e1=svp1*exp(svp2*(SST(i,j)-svpt0)/(SST(i,j)-svp3)) ! in kPa
+                 tmp_qsat_sfc=ep_2*tmp_e1/((psfc(i,j)/1000.)-tmp_e1) ! in kg/kg
+                 tmp_qsfc = mavail(i,j) * tmp_qsat_sfc ! in kg/kg
+                 
+                 ! compute a transfer coefficient
+                 if( (abs(qfx(i,j)).gt.1.e-11) .AND. &
+                      (abs(tmp_qsfc-qv_curr(i,1,j)).gt.1.e-9) ) then
+
+                   ! since the flux and moisture jump are non-zero, we
+                   !   can back out a transfer coefficient.
+                   tmp_transfer_coef = qfx(i,j)/(tmp_qsfc-qv_curr(i,1,j)) !qv_curr indexed i,k,j (!!)
+
+                   ! for simplicity, use a fixed value for surface fractionation
+                   !   rather than the wind-speed-dependent formulation in
+                   !   Merlivat & Jouzel (1979).
+                   tmp_kfrac = 0.9961 ! Section 5 of Pfahl & Wernli (2009)
+                   
+                   ! equilibrium fractionation coefficient for HDO over liquid.
+                   tmp_alpha_liq = alfaW_equilibrium( SST(i,j), 19 )
+
+                   ! Flux computation follows Bony et al (2008), doi:10.1029/2008JD009942
+                   !   sec 2.3.3, except for new value of kcoef.
+                   hdo_qfx(i,j) = tmp_transfer_coef*tmp_kfrac &
+                        *( R_HDO_SURF(i,j) * tmp_qsfc / tmp_alpha_liq &
+                           - HDO_QV(i,1,j) )
+                 END if ! if the flux is non-zero and the moisture jump is non-zero.
+               end if ! if over water
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+
+       ENDIF ! if we have surface moisture and isotopic ratios.
+
+     END IF ! if( PRESENT(HDO_QFX) )
+
+     !bloss: Same thing, but for H2O18
+     IF( PRESENT(O18_QFX) ) THEN
+
+       IF( PRESENT(R_O18_SURF) ) THEN
+         ! assume no fractionation (analogous to transpiration over land, 
+         !    sublimation from ice/snow cover).  Not as good for evaporation
+         !    from sea or lake surface.
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+                 o18_qfx(i,j) = qfx(i,j)*R_O18_SURF(i,j) 
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+       ELSE
+         !bloss: Asssume surface waters have deltaD=0 and no fractionation during evap.
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+               o18_qfx(i,j) = qfx(i,j) ! alfaW(1.0,tsk(i,j),0.,1.0,19) ! romps
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+       END IF
+
+       ! Now, if the surface is neither ice nor land and we have the isotopic
+       !   composition of surface water and near-surface vapor, let's 
+       !   back out a transfer coefficient and compute the isotopic flux
+       IF( PRESENT(R_O18_SURF) .AND. PRESENT(O18_QV) .AND. PRESENT(QV_CURR) ) THEN
+         DO ij = 1 , num_tiles
+           do i = i_start(ij), i_end(ij)                               ! romps
+             do j = j_start(ij), j_end(ij)                            ! romps
+               IF( (XLAND(I,J).EQ.2).AND.(XICEM(I,J).LT.XICE_THRESHOLD) ) THEN
+                 ! we're over water
+
+                 ! compute sfc air qv and surface sat qv
+                 !  using relations from module_sf_tempfsfclay.F
+                 tmp_e1=svp1*exp(svp2*(SST(i,j)-svpt0)/(SST(i,j)-svp3)) ! in kPa
+                 tmp_qsat_sfc=ep_2*tmp_e1/((psfc(i,j)/1000.)-tmp_e1) ! in kg/kg
+                 tmp_qsfc = mavail(i,j) * tmp_qsat_sfc ! in kg/kg
+                 
+                 ! compute a transfer coefficient
+                 if( (abs(qfx(i,j)).gt.1.e-11) .AND. &
+                      (abs(tmp_qsfc-qv_curr(i,1,j)).gt.1.e-9) ) then
+
+                   ! since the flux and moisture jump are non-zero, we
+                   !   can back out a transfer coefficient.
+                   tmp_transfer_coef = qfx(i,j)/(tmp_qsfc-qv_curr(i,1,j)) !qv_curr indexed i,k,j (!!)
+
+                   ! for simplicity, use a fixed value for surface fractionation
+                   !   rather than the wind-speed-dependent formulation in
+                   !   Merlivat & Jouzel (1979).
+                   tmp_kfrac = 0.9925 ! Section 5 of Pfahl & Wernli (2009)
+                   
+                   ! equilibrium fractionation coefficient for O18 over liquid.
+                   tmp_alpha_liq = alfaW_equilibrium( SST(i,j), 20 )
+
+                   ! Flux computation follows Bony et al (2008), doi:10.1029/2008JD009942
+                   !   sec 2.3.3, except for new value of kcoef.
+                   o18_qfx(i,j) = tmp_transfer_coef*tmp_kfrac &
+                        *( R_O18_SURF(i,j) * tmp_qsfc / tmp_alpha_liq &
+                           - O18_QV(i,1,j) )
+                 END if ! if the flux is non-zero and the moisture jump is non-zero.
+               end if ! if over water
+             end do                                                   ! romps
+           end do                                                      ! romps
+         ENDDO
+
+       ENDIF ! if we have surface moisture and isotopic ratios.
+
+     END IF ! if( PRESENT(O18_QFX) )
+
+!..End addition (bloss/wiso): Treatment of isotopic surface moisture fluxes
+
+   END IF
 
    END SUBROUTINE surface_driver
 
