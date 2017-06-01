@@ -789,8 +789,9 @@ integer myproc
    if ((config_flags%ra_lw_physics .eq. RRTMG_LWSCHEME .or. config_flags%ra_lw_physics .eq. RRTMG_LWSCHEME_FAST) .and. &
        (config_flags%ra_sw_physics .eq. RRTMG_SWSCHEME .or. config_flags%ra_sw_physics .eq. RRTMG_SWSCHEME_FAST) .and. &
         (config_flags%mp_physics  .eq. THOMPSON .or.        &
-         config_flags%mp_physics  .eq. THOMPSONAERO         &
-         .or. config_flags%mp_physics  .eq. NSSL_2MOM .or.       &
+         config_flags%mp_physics  .eq. THOMPISO .or.         & !bloss/wiso
+         config_flags%mp_physics  .eq. THOMPSONAERO .or.     &
+         config_flags%mp_physics  .eq. NSSL_2MOM .or.       &
          config_flags%mp_physics  .eq. NSSL_2MOMG .or.      &
          config_flags%mp_physics  .eq. NSSL_2MOMCCN .or.        &
          config_flags%mp_physics  .eq. WSM3SCHEME .or.      & ! syb+
@@ -3677,6 +3678,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
    USE module_mp_nssl_2mom
 #if (EM_CORE==1)
    USE module_mp_cammgmp_driver, ONLY:CAMMGMP_INIT !CAM5's microphysics
+   USE module_mp_thompiso !bloss/wiso
 #endif
 !------------------------------------------------------------------
    IMPLICIT NONE
@@ -3800,6 +3802,13 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
                           IDS=ids, IDE=ide, JDS=jds, JDE=jde, KDS=kds, KDE=kde,   &
                           IMS=ims, IME=ime, JMS=jms, JME=jme, KMS=kms, KME=kme,   &
                           ITS=its, ITE=ite, JTS=jts, JTE=jte, KTS=kts, KTE=kte)
+
+!..Begin addition (bloss/wiso)
+     CASE (THOMPISO)
+         IF(start_of_simulation.or.restart.or.config_flags%cycling) &
+              CALL thompiso_init !bloss: Note that Thompson version from 3.5.1 has simpler interface.
+                                 !  Need to update this later when merging isotopes into 3.9 Thompson scheme.
+!..End addition (bloss/wiso)
 
      CASE (THOMPSONAERO)
 ! Cycling the WRF forecast with moving nests will cause this initialization to be
