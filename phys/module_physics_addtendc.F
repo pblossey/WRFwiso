@@ -22,6 +22,7 @@ MODULE module_physics_addtendc
 
    USE module_state_description
    USE module_configure
+   USE MODULE_WRF_ERROR !bloss/wiso: allows optional output of max/min check on blten
 
 CONTAINS
 
@@ -31,6 +32,8 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       RUBLTEN,RUCUTEN,RUSHTEN,                              &
                       RVBLTEN,RVCUTEN,RVSHTEN,                              &
                       RQVBLTEN,RQCBLTEN,RQIBLTEN,RQNIBLTEN,&!RQNCBLTEN,       & !JOE
+                      RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN,               & !bloss/wiso
+                      RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN,               & !bloss/wiso
                       RQVCUTEN,RQCCUTEN,RQRCUTEN,RQICUTEN,RQSCUTEN,         &
                       RQCNCUTEN,RQINCUTEN,                                  &
                       RQVSHTEN,RQCSHTEN,RQRSHTEN,RQISHTEN,RQSSHTEN,RQGSHTEN,&
@@ -105,6 +108,11 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                                                       RUNDGDTEN, &
                                                       RVNDGDTEN
 
+   !bloss/wiso: Optional arguments for water isotope BL tendencies (MYJPBL only)
+   REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN  ), OPTIONAL ::   &
+                       RHDO_QVBLTEN, RHDO_QCBLTEN, RHDO_QIBLTEN, &
+                       RO18_QVBLTEN, RO18_QCBLTEN, RO18_QIBLTEN
+
    REAL, DIMENSION(ims:ime, jms:jme), INTENT(IN  ) :: RMUNDGDTEN
 
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN  ) ::   & ! fire
@@ -127,6 +135,8 @@ SUBROUTINE update_phy_ten(rph_tendf,rt_tendf,ru_tendf,rv_tendf,moist_tendf, &
                       RTHBLTEN,RUBLTEN,RVBLTEN,                &
                       RQVBLTEN,RQCBLTEN,RQIBLTEN,              &
                       RQNIBLTEN,                               &! For CAMUWPBL
+                      RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN,  &!bloss/wiso
+                      RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN,  &!bloss/wiso
                       ids, ide, jds, jde, kds, kde,            &
                       ims, ime, jms, jme, kms, kme,            &
                       its, ite, jts, jte, kts, kte             )
@@ -212,6 +222,8 @@ SUBROUTINE phy_bl_ten(config_flags,rk_step,n_moist,n_scalar,     &
                       scalar_tendf,adv_moist_cond,               &
                       RTHBLTEN,RUBLTEN,RVBLTEN,                  & 
                       RQVBLTEN,RQCBLTEN,RQIBLTEN,RQNIBLTEN,      &
+                      RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN,    & !bloss/wiso
+                      RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN,    & !bloss/wiso
                       ids, ide, jds, jde, kds, kde,              &
                       ims, ime, jms, jme, kms, kme,              &
                       its, ite, jts, jte, kts, kte               )
@@ -241,6 +253,10 @@ SUBROUTINE phy_bl_ten(config_flags,rk_step,n_moist,n_scalar,     &
                                                        RQCBLTEN, &
                                                        RQIBLTEN, &
                                                       RQNIBLTEN
+
+   REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(IN  ), OPTIONAL ::   & 
+                      RHDO_QVBLTEN, RHDO_QCBLTEN, RHDO_QIBLTEN, & !bloss/wiso
+                      RO18_QVBLTEN, RO18_QCBLTEN, RO18_QIBLTEN    !bloss/wiso
 
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme), INTENT(INOUT)::   &
                                                        rt_tendf, &
@@ -492,12 +508,49 @@ SUBROUTINE phy_bl_ten(config_flags,rk_step,n_moist,n_scalar,     &
                 ims, ime, jms, jme, kms, kme,                    &
                 its, ite, jts, jte, kts, kte                     )
 
-        if (P_QV .ge. PARAM_FIRST_SCALAR)                                         &
+        if (P_QV .ge. PARAM_FIRST_SCALAR) THEN !bloss/wiso
            CALL add_a2a(moist_tendf(ims,kms,jms,P_QV),RQVBLTEN,  &
                 config_flags,                                    &
                 ids,ide, jds, jde, kds, kde,                     &
                 ims, ime, jms, jme, kms, kme,                    &
                 its, ite, jts, jte, kts, kte                     )
+
+!..Begin addition (bloss/wiso): add PBL tendencies for HDO/O18 water vapor
+           if (P_HDO_QV .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_HDO_QV),RHDO_QVBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+           if (P_O18_QV .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_O18_QV),RO18_QVBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+
+           if(wrf_at_debug_level(120)) then
+             write(*,*) 'MAX/MIN RQVBLTEN = ', MAXVAL(RQVBLTEN(:,:,:)), &
+                  MINVAL(RQVBLTEN(:,:,:))
+             if(PRESENT(RHDO_QVBLTEN)) write(*,*) 'MAX/MIN RHDO_QVBLTEN = ', &
+                  MAXVAL(RHDO_QVBLTEN(:,:,:)), MINVAL(RHDO_QVBLTEN(:,:,:))
+             if(PRESENT(RO18_QVBLTEN)) write(*,*) 'MAX/MIN RO18_QVBLTEN = ', &
+                  MAXVAL(RO18_QVBLTEN(:,:,:)), MINVAL(RO18_QVBLTEN(:,:,:))
+
+             write(*,*) 'MAX/MIN moist_tendf = ', MAXVAL(moist_tendf(:,:,:,P_QV)), &
+                  MINVAL(moist_tendf(:,:,:,P_QV))
+             if(PRESENT(RHDO_QVBLTEN)) write(*,*) 'MAX/MIN HDO scalar_tendf = ', &
+                  MAXVAL(scalar_tendf(:,:,:,P_HDO_QV)), MINVAL(scalar_tendf(:,:,:,P_HDO_QV))
+             if(PRESENT(RO18_QVBLTEN)) write(*,*) 'MAX/MIN O18 scalar_tendf = ', &
+                  MAXVAL(scalar_tendf(:,:,:,P_O18_QV)), MINVAL(scalar_tendf(:,:,:,P_O18_QV))
+           end if
+
+         end if !if (P_QV .ge. PARAM_FIRST_SCALAR) then
+!..End addition (bloss/wiso)
 
        IF(.not. adv_moist_cond)THEN
 
@@ -538,19 +591,59 @@ SUBROUTINE phy_bl_ten(config_flags,rk_step,n_moist,n_scalar,     &
      
        ELSE
 
-        if (P_QC .ge. PARAM_FIRST_SCALAR)                                         &
+        if (P_QC .ge. PARAM_FIRST_SCALAR) THEN !bloss/wiso
            CALL add_a2a(moist_tendf(ims,kms,jms,P_QC),RQCBLTEN,  &
                 config_flags,                                    &
                 ids,ide, jds, jde, kds, kde,                     &
                 ims, ime, jms, jme, kms, kme,                    &
                 its, ite, jts, jte, kts, kte                     )
 
-        if (P_QI .ge. PARAM_FIRST_SCALAR)                                         &
+!..Begin addition (bloss/wiso): Add PBL tendencies for isotopic QC
+           if (P_HDO_QC .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_HDO_QC),RHDO_QCBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+           if (P_O18_QC .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_O18_QC),RO18_QCBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+         end if !if (P_QC .ge. PARAM_FIRST_SCALAR) then
+!..End addition (bloss/wiso)           
+
+        if (P_QI .ge. PARAM_FIRST_SCALAR) THEN !bloss/wiso
            CALL add_a2a(moist_tendf(ims,kms,jms,P_QI),RQIBLTEN,  &
                 config_flags,                                    &
                 ids,ide, jds, jde, kds, kde,                     &
                 ims, ime, jms, jme, kms, kme,                    &
                 its, ite, jts, jte, kts, kte                     )
+
+!..Begin addition (bloss/wiso): Add PBL tendencies for isotopic QI
+           if (P_HDO_QI .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_HDO_QI),RHDO_QIBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+           if (P_O18_QI .ge. PARAM_FIRST_SCALAR) then
+             CALL add_a2a(scalar_tendf(ims,kms,jms,P_O18_QI),RO18_QIBLTEN,  &
+                  config_flags,                                    &
+                  ids,ide, jds, jde, kds, kde,                     &
+                  ims, ime, jms, jme, kms, kme,                    &
+                  its, ite, jts, jte, kts, kte                    ) 
+           end if
+
+         end if !if (P_QI .ge. PARAM_FIRST_SCALAR) then
+!..End addition (bloss/wiso)           
      
 !       if (P_QS .ge. PARAM_FIRST_SCALAR)                                         &
 !          CALL add_a2a(moist_tendf(ims,kms,jms,P_QS),RQSBLTEN,  &
