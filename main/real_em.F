@@ -701,6 +701,7 @@ character *24 :: temp24 , temp24b
    REAL , DIMENSION(:,:,:) , ALLOCATABLE , SAVE :: ubdy3dtemp2 , vbdy3dtemp2 , tbdy3dtemp2 , pbdy3dtemp2 , qbdy3dtemp2
    REAL , DIMENSION(:,:,:) , ALLOCATABLE , SAVE :: mbdy2dtemp2
    REAL , DIMENSION(:,:,:) , ALLOCATABLE , SAVE :: qn1bdy3dtemp1, qn1bdy3dtemp2, qn2bdy3dtemp1, qn2bdy3dtemp2
+   REAL , DIMENSION(:,:,:) , ALLOCATABLE , SAVE :: qhdobdy3dtemp1, qo18bdy3dtemp1, qhdobdy3dtemp2, qo18bdy3dtemp2 !bloss/wiso
 real::t1,t2
 
    !  Various sizes that we need to be concerned about.
@@ -798,6 +799,18 @@ real::t1,t2
             ALLOCATE ( qn2bdy3dtemp2(ims:ime,kms:kme,jms:jme) )
          END IF
 
+         IF (config_flags%wisotope) THEN !bloss/wiso
+           IF ( ALLOCATED ( qhdobdy3dtemp1 ) ) DEALLOCATE ( qhdobdy3dtemp1 )
+           IF ( ALLOCATED ( qhdobdy3dtemp2 ) ) DEALLOCATE ( qhdobdy3dtemp2 )
+           ALLOCATE ( qhdobdy3dtemp1(ims:ime,kms:kme,jms:jme) )
+           ALLOCATE ( qhdobdy3dtemp2(ims:ime,kms:kme,jms:jme) )
+
+           IF ( ALLOCATED ( qo18bdy3dtemp1 ) ) DEALLOCATE ( qo18bdy3dtemp1 )
+           IF ( ALLOCATED ( qo18bdy3dtemp2 ) ) DEALLOCATE ( qo18bdy3dtemp2 )
+           ALLOCATE ( qo18bdy3dtemp1(ims:ime,kms:kme,jms:jme) )
+           ALLOCATE ( qo18bdy3dtemp2(ims:ime,kms:kme,jms:jme) )
+         ENDIF
+
       END IF
 
       !  Open the wrfinput file.  From this program, this is an *output* file.
@@ -860,6 +873,15 @@ real::t1,t2
                        grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
                        ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
             CALL couple ( grid%mu_2 , grid%mub , qn2bdy3dtemp1 , grid%scalar(:,:,:,P_QNIFA)      , 't' , grid%msfty , &
+                       grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
+                       ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
+         END IF
+
+         IF (config_flags%wisotope) THEN !bloss/wiso: Treat isotope vapor (P_HDO_QV, P_O18_QV) and P_QV consistently
+            CALL couple ( grid%mu_2 , grid%mub , qhdobdy3dtemp1 , grid%scalar(:,:,:,P_HDO_QV)      , 't' , grid%msfty , &
+                       grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
+                       ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
+            CALL couple ( grid%mu_2 , grid%mub , qo18bdy3dtemp1 , grid%scalar(:,:,:,P_O18_QV)      , 't' , grid%msfty , &
                        grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
                        ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
          END IF
@@ -944,6 +966,22 @@ real::t1,t2
                                                                     ims , ime , jms , jme , kms , kme , &
                                                                     ips , ipe , jps , jpe , kps , kpe )
          END IF
+
+         IF (config_flags%wisotope) THEN !bloss/wiso
+            CALL stuff_bdy     ( qhdobdy3dtemp1 , grid%scalar_bxs(:,:,:,P_HDO_QV), grid%scalar_bxe(:,:,:,P_HDO_QV),     &
+                                            grid%scalar_bys(:,:,:,P_HDO_QV), grid%scalar_bye(:,:,:,P_HDO_QV),     &
+                                                              'T' , spec_bdy_width      ,               &
+                                                                    ids , ide , jds , jde , kds , kde , &
+                                                                    ims , ime , jms , jme , kms , kme , &
+                                                                    ips , ipe , jps , jpe , kps , kpe )
+            CALL stuff_bdy     ( qo18bdy3dtemp1 , grid%scalar_bxs(:,:,:,P_O18_QV), grid%scalar_bxe(:,:,:,P_O18_QV),     &
+                                            grid%scalar_bys(:,:,:,P_O18_QV), grid%scalar_bye(:,:,:,P_O18_QV),     &
+                                                              'T' , spec_bdy_width      ,               &
+                                                                    ids , ide , jds , jde , kds , kde , &
+                                                                    ims , ime , jms , jme , kms , kme , &
+                                                                    ips , ipe , jps , jpe , kps , kpe )
+         END IF
+
       END IF
 
 
@@ -1014,6 +1052,15 @@ real::t1,t2
                        grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
                        ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
             CALL couple ( grid%mu_2 , grid%mub , qn2bdy3dtemp2 , grid%scalar(:,:,:,P_QNIFA)      , 't' , grid%msfty , &
+                       grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
+                       ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
+         END IF
+
+         IF (config_flags%wisotope) THEN !bloss/wiso: Treat isotope vapor (P_HDO_QV, P_O18_QV) and P_QV consistently
+            CALL couple ( grid%mu_2 , grid%mub , qhdobdy3dtemp2 , grid%scalar(:,:,:,P_HDO_QV)      , 't' , grid%msfty , &
+                       grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
+                       ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
+            CALL couple ( grid%mu_2 , grid%mub , qo18bdy3dtemp2 , grid%scalar(:,:,:,P_O18_QV)      , 't' , grid%msfty , &
                        grid%c1h, grid%c2h, grid%c1h, grid%c2h, &
                        ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, ips, ipe, jps, jpe, kps, kpe )
          END IF
@@ -1119,6 +1166,26 @@ real::t1,t2
                                                                ims , ime , jms , jme , kms , kme , &
                                                                ips , ipe , jps , jpe , kps , kpe )
          END IF
+
+         IF (config_flags%wisotope) THEN !bloss/wiso
+            CALL stuff_bdytend ( qhdobdy3dtemp2 , qhdobdy3dtemp1 , REAL(interval_seconds) ,                 &
+                                                               grid%scalar_btxs(:,:,:,P_HDO_QV), grid%scalar_btxe(:,:,:,P_HDO_QV), &
+                                                               grid%scalar_btys(:,:,:,P_HDO_QV), grid%scalar_btye(:,:,:,P_HDO_QV), &
+                                                               'T' , &
+                                                               spec_bdy_width      , &
+                                                               ids , ide , jds , jde , kds , kde , &
+                                                               ims , ime , jms , jme , kms , kme , &
+                                                               ips , ipe , jps , jpe , kps , kpe )
+            CALL stuff_bdytend ( qo18bdy3dtemp2 , qo18bdy3dtemp1 , REAL(interval_seconds) ,                 &
+                                                               grid%scalar_btxs(:,:,:,P_O18_QV), grid%scalar_btxe(:,:,:,P_O18_QV), &
+                                                               grid%scalar_btys(:,:,:,P_O18_QV), grid%scalar_btye(:,:,:,P_O18_QV), &
+                                                               'T' , &
+                                                               spec_bdy_width      , &
+                                                               ids , ide , jds , jde , kds , kde , &
+                                                               ims , ime , jms , jme , kms , kme , &
+                                                               ips , ipe , jps , jpe , kps , kpe )
+         END IF
+
       END IF
 
       !  Both pieces of the boundary data are now available to be written (initial time and tendency).
@@ -1240,6 +1307,17 @@ real::t1,t2
                END DO
             END IF
 
+            IF (config_flags%wisotope) THEN !bloss/wiso
+               DO j = jps , jpe
+                  DO k = kps , kpe
+                     DO i = ips , ipe
+                       qhdobdy3dtemp1(i,k,j) = qhdobdy3dtemp2(i,k,j)
+                       qo18bdy3dtemp1(i,k,j) = qo18bdy3dtemp2(i,k,j)
+                     END DO
+                  END DO
+               END DO
+            END IF
+
          END IF
 
          IF(grid_fdda .GE. 1)THEN
@@ -1315,6 +1393,21 @@ real::t1,t2
                                                                        ips , ipe , jps , jpe , kps , kpe )
                CALL stuff_bdy     ( qn2bdy3dtemp1 , grid%scalar_bxs(:,:,:,P_QNIFA), grid%scalar_bxe(:,:,:,P_QNIFA),     &
                                                     grid%scalar_bys(:,:,:,P_QNIFA), grid%scalar_bye(:,:,:,P_QNIFA),     &
+                                                                 'T' , spec_bdy_width      ,               &
+                                                                       ids , ide , jds , jde , kds , kde , &
+                                                                       ims , ime , jms , jme , kms , kme , &
+                                                                       ips , ipe , jps , jpe , kps , kpe )
+            END IF
+   
+            IF (config_flags%wisotope) THEN !bloss/wiso
+               CALL stuff_bdy     ( qhdobdy3dtemp1 , grid%scalar_bxs(:,:,:,P_HDO_QV), grid%scalar_bxe(:,:,:,P_HDO_QV),     &
+                                                    grid%scalar_bys(:,:,:,P_HDO_QV), grid%scalar_bye(:,:,:,P_HDO_QV),     &
+                                                                 'T' , spec_bdy_width      ,               &
+                                                                       ids , ide , jds , jde , kds , kde , &
+                                                                       ims , ime , jms , jme , kms , kme , &
+                                                                       ips , ipe , jps , jpe , kps , kpe )
+               CALL stuff_bdy     ( qo18bdy3dtemp1 , grid%scalar_bxs(:,:,:,P_O18_QV), grid%scalar_bxe(:,:,:,P_O18_QV),     &
+                                                    grid%scalar_bys(:,:,:,P_O18_QV), grid%scalar_bye(:,:,:,P_O18_QV),     &
                                                                  'T' , spec_bdy_width      ,               &
                                                                        ids , ide , jds , jde , kds , kde , &
                                                                        ims , ime , jms , jme , kms , kme , &
