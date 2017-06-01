@@ -76,6 +76,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
    USE module_llxy, ONLY : proj_cassini
    USE module_avgflx_em, ONLY : zero_avgflx, upd_avgflx
    USE module_cpl, ONLY : coupler_on, cpl_settime, cpl_store_input
+   USE MODULE_WRF_ERROR !bloss/wiso: allows optional output of max/min check on blten
 
    IMPLICIT NONE
 
@@ -2797,10 +2798,28 @@ BENCH_END(tracer_adv_tim)
                                  grid%j_start(ij), grid%j_end(ij), &
                                  k_start    , k_end               )
 
-           IF( rk_step == 1 ) THEN
-             IF ( config_flags%nested .OR. &
-                ( config_flags%specified .AND. config_flags%have_bcs_scalar ) .OR. &
+           !bloss/wiso: debugging for isotopic tendency from PBL scheme
+           if(wrf_at_debug_level(120)) then
+             if((is.eq.2).OR.(is.eq.8)) then
+               write(*,*) 'after rk_scalar_tend, rkstep = ', rk_step, ' is = ', is
+               write(*,*) 'MAX/MIN QVTEND = ', MAXVAL(moist_tend(:,:,:,p_qv)), MINVAL(moist_tend(:,:,:,p_qv))
+               write(*,*) 'MAX/MIN HDO_QVTEND = ', MAXVAL(scalar_tend(:,:,:,p_hdo_qv)), MINVAL(scalar_tend(:,:,:,p_hdo_qv))
+               write(*,*) 'MAX/MIN O18_QVTEND = ', MAXVAL(scalar_tend(:,:,:,p_o18_qv)), MINVAL(scalar_tend(:,:,:,p_o18_qv))
+             end if
+           end if
+
+           !bloss/wiso: Copy treatment of moist variables above for consistency between standard water
+           !   and HDO/H218O.  This replaces the default treatment that is commented out below.
+           IF( ( config_flags%specified .or. config_flags%nested ) .and. rk_step == 1 ) THEN 
+             IF ( is .EQ. P_HDO_QV .OR. is .EQ. P_O18_QV .OR. config_flags%nested .OR. &
+                  ( config_flags%specified .AND. config_flags%have_bcs_scalar ) .OR. &
                 ( ( is .EQ. P_QNWFA .OR. is .EQ. P_QNIFA) .AND. config_flags%use_aero_icbc ) ) THEN
+
+!bloss/wiso           IF( rk_step == 1 ) THEN
+!bloss/wiso             IF ( config_flags%nested .OR. &
+!bloss/wiso                ( config_flags%specified .AND. config_flags%have_bcs_scalar ) .OR. &
+!bloss/wiso                ( ( is .EQ. P_QNWFA .OR. is .EQ. P_QNIFA) .AND. config_flags%use_aero_icbc ) ) THEN
+
 
                CALL relax_bdy_scalar ( scalar_tend(ims,kms,jms,is),                            &
                                        scalar(ims,kms,jms,is),  grid%mut,                      &
@@ -2905,6 +2924,11 @@ BENCH_END(tracer_adv_tim)
 !           If we        have bcs for scalars, do not call flow dep: tests 5 and 7
 !           If we do not have bcs for scalars,        call flow dep: tests 6 and 8
 
+!bloss/wiso: To maintain consistency with QV, do not apply this routine to HDO_QV or O18_QV.
+
+               IF ( ( is .NE. P_HDO_QV ) .AND. (is .NE. P_O18_QV ) ) THEN !bloss/wiso
+
+
                CALL flow_dep_bdy  ( scalar(ims,kms,jms,is),     &
                                   grid%ru_m, grid%rv_m, config_flags,   &
                                   grid%spec_zone,                  &
@@ -2914,6 +2938,9 @@ BENCH_END(tracer_adv_tim)
                                   grid%i_start(ij), grid%i_end(ij),  &
                                   grid%j_start(ij), grid%j_end(ij),  &
                                   k_start, k_end                    )
+
+               ENDIF !bloss/wiso
+
              ENDIF
 
            ENDIF
@@ -2924,6 +2951,14 @@ BENCH_END(tracer_adv_tim)
        ENDDO scalar_variable_loop
 
      ENDIF other_scalar_advance
+
+     !bloss/wiso: debug check to make sure PBL tendencies are applied consistently to the water isotopes.
+     if(wrf_at_debug_level(120)) then
+       write(*,*) 'After rk_scalar_update, rkstep = ', rk_step
+       write(*,*) 'MAX/MIN QVTEND = ', MAXVAL(moist_tend(:,:,:,p_qv)), MINVAL(moist_tend(:,:,:,p_qv))
+       write(*,*) 'MAX/MIN HDO_QVTEND = ', MAXVAL(scalar_tend(:,:,:,p_hdo_qv)), MINVAL(scalar_tend(:,:,:,p_hdo_qv))
+       write(*,*) 'MAX/MIN O18_QVTEND = ', MAXVAL(scalar_tend(:,:,:,p_o18_qv)), MINVAL(scalar_tend(:,:,:,p_o18_qv))
+     endif
 
 !************************************************************************************************************************
 ! LES_fix: convert theta_m back to theta, point 2 ! 28 January 2015
@@ -3801,6 +3836,36 @@ BENCH_START(micro_driver_tim)
       &        , QVOLG_CURR=scalar(ims,kms,jms,P_QVOLG), F_QVOLG=F_QVOLG    & ! for nssl_2mom
       &        , QVOLH_CURR=scalar(ims,kms,jms,P_QVOLH), F_QVOLH=F_QVOLH    & ! for nssl_2mom
       &        , cu_used=config_flags%cu_used                             &
+      &        , HDO_QV=scalar(ims,kms,jms,P_HDO_QV), F_HDO_QV=F_HDO_QV               & !bloss/wiso
+      &        , HDO_QC=scalar(ims,kms,jms,P_HDO_QC), F_HDO_QC=F_HDO_QC               & !bloss/wiso
+      &        , HDO_QR=scalar(ims,kms,jms,P_HDO_QR), F_HDO_QR=F_HDO_QR               & !bloss/wiso
+      &        , HDO_QI=scalar(ims,kms,jms,P_HDO_QI), F_HDO_QI=F_HDO_QI               & !bloss/wiso
+      &        , HDO_QS=scalar(ims,kms,jms,P_HDO_QS), F_HDO_QS=F_HDO_QS               & !bloss/wiso
+      &        , HDO_QG=scalar(ims,kms,jms,P_HDO_QG), F_HDO_QG=F_HDO_QG               & !bloss/wiso
+      &        , HDO_RAINNC=grid%hdo_rainnc, HDO_RAINNCV=grid%hdo_rainncv                 & !bloss/wiso
+      &        , HDO_SNOWNC=grid%hdo_snownc, HDO_SNOWNCV=grid%hdo_snowncv                 & !bloss/wiso
+      &        , HDO_GRAUPELNC=grid%hdo_graupelnc, HDO_GRAUPELNCV=grid%hdo_graupelncv     &  !bloss/wiso
+      &        , O18_QV=scalar(ims,kms,jms,P_O18_QV), F_O18_QV=F_O18_QV               & !bloss/wiso
+      &        , O18_QC=scalar(ims,kms,jms,P_O18_QC), F_O18_QC=F_O18_QC               & !bloss/wiso
+      &        , O18_QR=scalar(ims,kms,jms,P_O18_QR), F_O18_QR=F_O18_QR               & !bloss/wiso
+      &        , O18_QI=scalar(ims,kms,jms,P_O18_QI), F_O18_QI=F_O18_QI               & !bloss/wiso
+      &        , O18_QS=scalar(ims,kms,jms,P_O18_QS), F_O18_QS=F_O18_QS               & !bloss/wiso
+      &        , O18_QG=scalar(ims,kms,jms,P_O18_QG), F_O18_QG=F_O18_QG               & !bloss/wiso
+      &        , O18_RAINNC=grid%o18_rainnc, O18_RAINNCV=grid%o18_rainncv                 & !bloss/wiso
+      &        , O18_SNOWNC=grid%o18_snownc, O18_SNOWNCV=grid%o18_snowncv                 & !bloss/wiso
+      &        , O18_GRAUPELNC=grid%o18_graupelnc, O18_GRAUPELNCV=grid%o18_graupelncv     &  !bloss/wiso
+      &        , QLIQ_AUTO=grid%qliq_auto, QLIQ_COLL=grid%qliq_coll       & !bloss/Thompson diagnostics
+      &        , QICE_AUTO=grid%qice_auto, QICE_COLL=grid%qice_coll       & !bloss/Thompson diagnostics
+      &        , QICE_RIM=grid%qice_rim, QVAP_CLD=grid%qvap_cld, QPCP_SED=grid%qpcp_sed       & !bloss/Thompson diagnostics
+      &        , QPCP_DEP=grid%qpcp_dep, QPCP_SUB=grid%qpcp_sub, QPCP_REVP=grid%qpcp_revp       & !bloss/Thompson diagnostics
+      &        , HDO_LIQ_AUTO=grid%hdo_liq_auto, HDO_LIQ_COLL=grid%hdo_liq_coll       & !bloss/Thompson diagnostics
+      &        , HDO_ICE_AUTO=grid%hdo_ice_auto, HDO_ICE_COLL=grid%hdo_ice_coll       & !bloss/Thompson diagnostics
+      &        , HDO_ICE_RIM=grid%hdo_ice_rim, HDO_VAP_CLD=grid%hdo_vap_cld, HDO_PCP_SED=grid%hdo_pcp_sed       & !bloss/Thompson diagnostics
+      &        , HDO_PCP_DEP=grid%hdo_pcp_dep, HDO_PCP_SUB=grid%hdo_pcp_sub, HDO_PCP_REVP=grid%hdo_pcp_revp       & !bloss/Thompson diagnostics
+      &        , O18_LIQ_AUTO=grid%o18_liq_auto, O18_LIQ_COLL=grid%o18_liq_coll       & !bloss/Thompson diagnostics
+      &        , O18_ICE_AUTO=grid%o18_ice_auto, O18_ICE_COLL=grid%o18_ice_coll       & !bloss/Thompson diagnostics
+      &        , O18_ICE_RIM=grid%o18_ice_rim, O18_VAP_CLD=grid%o18_vap_cld, O18_PCP_SED=grid%o18_pcp_sed       & !bloss/Thompson diagnostics
+      &        , O18_PCP_DEP=grid%o18_pcp_dep, O18_PCP_SUB=grid%o18_pcp_sub, O18_PCP_REVP=grid%o18_pcp_revp       & !bloss/Thompson diagnostics
       &        , qrcuten=grid%rqrcuten, qscuten=grid%rqscuten             &
       &        , qicuten=grid%rqicuten, qccuten=grid%rqccuten             &
       &        , HAIL=config_flags%gsfcgce_hail                           & ! for gsfcgce
@@ -4533,7 +4598,11 @@ BENCH_END(bc_2d_tim)
 
      scalar_species_bdy_loop_3 : DO is = PARAM_FIRST_SCALAR , num_3d_s
 
-     IF( ( config_flags%nested ) ) THEN
+     !bloss/wiso: mimick treatment of moist variables above to maintain consitency
+     !   for HDO_QV and O18_QV
+     IF ( is .EQ. P_HDO_QV .OR. is .EQ. P_O18_QV .OR. config_flags%nested .OR. &
+             ( config_flags%specified .AND. config_flags%have_bcs_scalar ) ) THEN
+!bloss/wiso     IF( ( config_flags%nested ) ) THEN
         CALL spec_bdy_final   ( scalar(ims,kms,jms,is), grid%muts,                 &
                                 grid%c1h, grid%c2h, grid%msfty,                    &
                                 scalar_bxs(jms,kms,1,is),scalar_bxe(jms,kms,1,is), &
