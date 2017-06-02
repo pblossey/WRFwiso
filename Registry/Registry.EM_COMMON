@@ -2741,6 +2741,9 @@ state integer nodyn_dummy - dyn_nodyn -  -  -  "" "" ""
 # Turbine drag physics.
 rconfig   integer     windfarm_opt        namelist,physics      max_domains    0       rh       "windfarm_opt"                ""      ""
 rconfig   integer     windfarm_ij         namelist,physics      1              0       rh       "windfarm_ij"                ""      ""
+
+# bloss/wiso: Enable water isotopologues physics
+rconfig   logical     wisotope            namelist,physics      max_domains    .false. rh       "wisotope"                "Enables water isotopologue physics"      ""
 #
 #---------------------------------------------------------------------------------------------------------------------------------------
 # Package Declarations
