@@ -3808,7 +3808,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
          IF(start_of_simulation.or.restart.or.config_flags%cycling) THEN
            ! bloss/wiso: This flag ensures consistent treatment of water vapor
            !  and its isotopic variants (HDO, H218O) at the boundaries.
-           wisotope = .true. 
+            config_flags%wisotope = .true. 
 
            CALL thompiso_init !bloss: Note that Thompson version from 3.5.1 has simpler interface.
                                  !  Need to update this later when merging isotopes into 3.9 Thompson scheme.
