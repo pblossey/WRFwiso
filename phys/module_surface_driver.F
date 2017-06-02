@@ -26,7 +26,7 @@ CONTAINS
      &          ,psim,p_phy,q10,q2,qfx,qsfc,qshltr,qz0                &
 #endif
      &          ,hdo_qfx,hdo_qv,r_hdo_surf,r_o18_surf,o18_qfx,o18_qv  & !bloss/wiso
-     &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff                   &
+     &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff,acrunoff          &
      &          ,smois,smstav,smstot,snoalb,snow,snowc,snowh,stepbl   &
      &          ,smcrel                                               &
      &          ,th10,th2,thz0,th_phy,tmn,tshltr,tsk,tslb             &
@@ -1332,6 +1332,14 @@ CONTAINS
 !
   real,    dimension(ims:ime,1:maxpatch,jms:jme ) ::  q_ref2m   ! clm
 
+
+!bloss/wiso: variables for computing isotopic surface fluxes of water
+  real :: tmp_transfer_coef ! transfer coefficient for surface water flux, units m/s
+  real :: tmp_kfrac ! kinetic fractionation coefficient for surface fluxes, unitless
+  real :: tmp_alpha_liq ! equilibrium fractionation coefficient for liquid
+  real :: tmp_e1 ! saturation vapor pressure over liquid, units kPa
+  real :: tmp_qsat_sfc ! saturation mixing ratio of surface liquid, kg/kg
+  real :: tmp_qsfc ! available moisture at surface for evaporation, kg/kg
 
 !------------------------------------------------------------------
    CHARACTER*256 :: message
