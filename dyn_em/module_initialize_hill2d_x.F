@@ -259,18 +259,18 @@ CONTAINS
      CASE (1)
        write(6,992) hm
        write(6,993) xa
-992    format('Terrain is a Witch of Agnesi mountain with height ',F8.2,' meters'
+992    format('Terrain is a Witch of Agnesi mountain with height ',F8.2,' meters')
 993    format('   and half-width ',F8.2,' meters.')
      CASE (2)
        write(6,994) hm1
        write(6,995) xa1, xal1
-994    format('Terrain is a gaussian/cosine hill with height ',F8.2,' meters,'
-995    format('   gaussian half-width ',F8.2,' meters, and cosine half-wavelength ',F8,2,' meters.')
+994    format('Terrain is a gaussian/cosine hill with height ',F8.2,' meters,')
+995    format('   gaussian half-width ',F8.2,' meters, and cosine half-wavelength ',F8.2,' meters.')
      CASE (3)
        write(6,996) hm
        write(6,997) xa
-996    format('Terrain is a cosine bell raised to the fourth power with height ',F8.2,' meters'
-997    format('   and quarter width ',F8,2,' meters.')
+996    format('Terrain is a cosine bell raised to the fourth power with height ',F8.2,' meters')
+997    format('   and quarter width ',F8.2,' meters.')
      END SELECT
      write(6,*)
    !..End addition (bloss)
