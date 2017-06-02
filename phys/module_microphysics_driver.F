@@ -498,7 +498,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,kext_ft_qic,kext_ft_qip,kext_ft_qid &
                  ,kext_ft_qs,kext_ft_qg                           &
                  ,qnwfa_curr,qnifa_curr                           & ! Added by G. Thompson
-                 ,qvolg_curr,qvolh_curr, qrimef_curr, &
+                 ,qvolg_curr,qvolh_curr, qrimef_curr &
                  ,QLIQ_AUTO, QLIQ_COLL, QICE_AUTO, QICE_COLL & !bloss/thompson tendencies
                  ,QICE_RIM, QVAP_CLD, QPCP_SED & !bloss/thompson tendencies
                  ,QPCP_DEP, QPCP_SUB, QPCP_REVP & !bloss/thompson tendencies
