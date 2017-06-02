@@ -2784,7 +2784,7 @@ package   etampnew        mp_physics==95               -             moist:qv,qc
 package   radar_refl      compute_radar_ref==1         -             state:refl_10cm,refd_max
 
 #..Begin addition (bloss/wiso)
-package   thompiso      mp_physics==28               -             moist:qv,qc,qr,qi,qs,qg;scalar:hdo_qv,hdo_qc,hdo_qr,hdo_qi,hdo_qs,hdo_qg,o18_qv,o18_qc,o18_qr,o18_qi,o18_qs,o18_qg,qni,qnr;state:re_cloud,re_ice,re_snow
+package   thompiso      mp_physics==108               -             moist:qv,qc,qr,qi,qs,qg;scalar:hdo_qv,hdo_qc,hdo_qr,hdo_qi,hdo_qs,hdo_qg,o18_qv,o18_qc,o18_qr,o18_qi,o18_qs,o18_qg,qni,qnr;state:re_cloud,re_ice,re_snow
 #..End addition (bloss/wiso)
 
 endif
