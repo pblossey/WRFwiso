@@ -41,9 +41,9 @@ MODULE module_em
 	vertical_diffusion_v, vertical_diffusion, vertical_diffusion_3dmp, sixth_order_diffusion, rk_rayleigh_damp, &
         theta_relaxation, vertical_diffusion_mp, zero_tend, zero_tend2d
 	
-   USE module_state_description, only: param_first_scalar, p_qr, p_qv, p_qc, p_qg, p_qi, p_qs, tiedtkescheme, heldsuarez, &
-        positivedef, gdscheme, g3scheme, gfscheme, kfetascheme, monotonic, wenopd_scalar, weno_scalar, weno_mom, &
-        p_hdo_qv, p_o18_qv !bloss/wiso
+   USE module_state_description, only: param_first_scalar, p_qr, p_qv, p_qc, p_qg, p_qi, p_qs, tiedtkescheme, ntiedtkescheme, heldsuarez, &
+        positivedef, gdscheme, g3scheme, gfscheme, kfetascheme, mskfscheme, monotonic, wenopd_scalar, weno_scalar, weno_mom, &
+        p_hdo_qv, p_o18_qv      !bloss/wiso
 	
    USE module_damping_em, only: held_suarez_damp
 
