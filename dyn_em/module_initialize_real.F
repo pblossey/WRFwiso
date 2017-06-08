@@ -2190,10 +2190,15 @@ integer::oops1,oops2
                  write(a_message,*) 'Interpolating dhdov_gc onto WRF grid in scalar(:,:,:,P_HDO_QV)'
                  CALL wrf_debug ( 0 , a_message)
                   CALL vert_interp ( grid%dhdov_gc , grid%pd_gc , scalar(:,:,:,P_HDO_QV) , grid%pb , &
+                                     grid%hgtmaxw , grid%hgttrop , grid%pmaxw , grid%ptrop , &
+                                     grid%pmaxwnn , grid%ptropnn , &
+                                     0 , 0 , &
+                                     config_flags%maxw_horiz_pres_diff , config_flags%trop_horiz_pres_diff , &
+                                     config_flags%maxw_above_this_level , &
                                      num_metgrid_levels , 'Q' , &
                                      interp_type , lagrange_order , extrap_type , &
                                      lowest_lev_from_sfc , use_levels_below_ground , use_surface , &
-                                     zap_close_levels , force_sfc_in_vinterp , &
+                                     zap_close_levels , force_sfc_in_vinterp , grid%id , &
                                      ids , ide , jds , jde , kds , kde , &
                                      ims , ime , jms , jme , kms , kme , &
                                      its , ite , jts , jte , kts , kte )
@@ -2224,10 +2229,15 @@ integer::oops1,oops2
                  write(a_message,*) 'Interpolating do18v_gc onto WRF grid in scalar(:,:,:,P_O18_QV)'
                  CALL wrf_debug ( 0 , a_message)
                   CALL vert_interp ( grid%do18v_gc , grid%pd_gc , scalar(:,:,:,P_O18_QV) , grid%pb , &
+                                     grid%hgtmaxw , grid%hgttrop , grid%pmaxw , grid%ptrop , &
+                                     grid%pmaxwnn , grid%ptropnn , &
+                                     0 , 0 , &
+                                     config_flags%maxw_horiz_pres_diff , config_flags%trop_horiz_pres_diff , &
+                                     config_flags%maxw_above_this_level , &
                                      num_metgrid_levels , 'Q' , &
                                      interp_type , lagrange_order , extrap_type , &
                                      lowest_lev_from_sfc , use_levels_below_ground , use_surface , &
-                                     zap_close_levels , force_sfc_in_vinterp , &
+                                     zap_close_levels , force_sfc_in_vinterp , grid%id , &
                                      ids , ide , jds , jde , kds , kde , &
                                      ims , ime , jms , jme , kms , kme , &
                                      its , ite , jts , jte , kts , kte )
