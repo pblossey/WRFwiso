@@ -49,7 +49,8 @@ MODULE module_big_step_utilities_em
 
    USE module_model_constants
    USE module_state_description, only: p_qg, p_qs, p_qi, gdscheme, tiedtkescheme, ntiedtkescheme, kfetascheme, mskfscheme, &
-       g3scheme, gfscheme,p_qv, param_first_scalar, p_qr, p_qc, DFI_FWD
+       g3scheme, gfscheme,p_qv, param_first_scalar, p_qr, p_qc, DFI_FWD, &
+       p_hdo_qv, p_hdo_qc, p_hdo_qi, p_o18_qv, p_o18_qc, p_o18_qi !bloss/wiso
    USE module_configure, ONLY : grid_config_rec_type
    USE module_wrf_error
 
@@ -4972,6 +4973,8 @@ END SUBROUTINE phy_prep
                          RTHRATEN,                                    &
                          RTHBLTEN, RUBLTEN, RVBLTEN,                  &
                          RQVBLTEN, RQCBLTEN, RQIBLTEN,                &
+                         RHDO_QVBLTEN, RHDO_QCBLTEN, RHDO_QIBLTEN,                & !bloss/wiso
+                         RO18_QVBLTEN, RO18_QCBLTEN, RO18_QIBLTEN,                & !bloss/wiso
                          RUCUTEN,  RVCUTEN,  RTHCUTEN,                &
                          RQVCUTEN, RQCCUTEN, RQRCUTEN,                &
                          RQICUTEN, RQSCUTEN,                          &
@@ -5025,6 +5028,15 @@ END SUBROUTINE phy_prep
                                                            RQVBLTEN, &
                                                            RQCBLTEN, &
                                                            RQIBLTEN
+
+   !bloss/wiso: declare isotopic tendencies from BL scheme
+   REAL,  DIMENSION( ims:ime, kms:kme, jms:jme )                   , &
+          OPTIONAL, INTENT(INOUT)   ::                     RHDO_QVBLTEN, &
+                                                           RHDO_QCBLTEN, &
+                                                           RHDO_QIBLTEN, &
+                                                           RO18_QVBLTEN, &
+                                                           RO18_QCBLTEN, &
+                                                           RO18_QIBLTEN
 
    REAL,  DIMENSION( ims:ime, kms:kme, jms:jme )                   , &
           INTENT(INOUT)   ::                                RTHFTEN, &
@@ -5263,6 +5275,68 @@ END SUBROUTINE phy_prep
          ENDDO
          ENDDO
       ENDIF
+
+      !bloss/wiso: re-scale isotopic BL tendencies for consistency
+      IF (P_HDO_QV .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+            RHDO_QVBLTEN(I,K,J)=RHDO_QVBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_HDO_QC .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+           RHDO_QCBLTEN(I,K,J)=RHDO_QCBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_HDO_QI .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+            RHDO_QIBLTEN(I,K,J)=RHDO_QIBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_O18_QV .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+            RO18_QVBLTEN(I,K,J)=RO18_QVBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_O18_QC .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+           RO18_QCBLTEN(I,K,J)=RO18_QCBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+
+      IF (P_O18_QI .ge. PARAM_FIRST_SCALAR) THEN
+         DO J=j_start,j_end
+         DO K=k_start,k_end
+         DO I=i_start,i_end
+            RO18_QIBLTEN(I,K,J)=RO18_QIBLTEN(I,K,J)/MUT(I,J)
+         ENDDO
+         ENDDO
+         ENDDO
+      ENDIF
+      !bloss/wiso: end changes
 
     ENDIF
 

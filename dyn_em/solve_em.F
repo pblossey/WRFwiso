@@ -3622,6 +3622,8 @@ BENCH_END(advance_ppt_tim)
                         grid%rthraten,                                   &
                         grid%rthblten, grid%rublten, grid%rvblten,       &
                         grid%rqvblten, grid%rqcblten, grid%rqiblten,     &
+                        grid%rhdo_qvblten, grid%rhdo_qcblten, grid%rhdo_qiblten,     & !bloss/wiso
+                        grid%ro18_qvblten, grid%ro18_qcblten, grid%ro18_qiblten,     & !bloss/wiso
                         grid%rucuten,  grid%rvcuten,  grid%rthcuten,     &
                         grid%rqvcuten, grid%rqccuten, grid%rqrcuten,     &
                         grid%rqicuten, grid%rqscuten,                    &
