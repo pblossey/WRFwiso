@@ -278,6 +278,14 @@
       REAL:: t1_qs_sd, t2_qs_sd, t1_qg_sd, t2_qg_sd
       REAL:: t1_qs_me, t2_qs_me, t1_qg_me, t2_qg_me
       CHARACTER*256:: mp_debug
+!..Controls for isotope implementation (MOSTLY FOR TESTING)
+!     can be set through MP_WISO namelist
+      LOGICAL :: fractionate = .true. ! if false, turns off isotopic fractionation in the microphysics
+!bloss(2017-05-16): Lookup table filenames for single and double precision
+      CHARACTER*256:: lookup_table_fname_single = &
+           '/home/disk/eos1/bloss/data/thompson_lookup_tables_r1_single.bin'
+      CHARACTER*256:: lookup_table_fname_double = &
+           '/home/disk/eos1/bloss/data/thompson_lookup_tables_r1_double.bin'
 !+---+
 !+---+-----------------------------------------------------------------+
 !..END DECLARATIONS
@@ -293,7 +301,7 @@
       !         Probably not a portable solution, but should work
       !         in development work on a single platform and allow
       !         this to be run as a parcel model.
-      logical :: read_lookup_tables_from_file
+      logical :: read_lookup_tables_from_file, lookup_tables_file_exists
       integer :: ioerror
       integer :: nbins_test, &
                nbr_test, nbs_test, nbg_test, &
@@ -303,11 +311,7 @@
              mu_s_test, Kap0_test, Kap1_test, Lam0_test, Lam1_test, & ! extra snow parameters
              am_s_test, bm_s_test, av_s_test, bv_s_test, fv_s_test, D0s_test, &
              mu_g_test, am_g_test, bm_g_test, av_g_test, bv_g_test, D0g_test
-!!$      integer :: nbins_test, nbc_test, &
-!!$             nbi_test, nbr_test, nbs_test,  nbg_test, ntb_c_test, &
-!!$             ntb_i_test, ntb_r_test, ntb_s_test, ntb_g_test, &
-!!$             ntb_g1_test, ntb_r1_test, ntb_i1_test, ntb_t_test
-!!$      real :: mu_c_test, mu_i_test, mu_r_test, mu_g_test 
+      CHARACTER*256:: lookup_table_fname
 
       !bloss: add variables to allow input of Nt_c and possibly other
       !  variables through a namelist.
@@ -318,6 +322,10 @@
       !         namelist called "mp_thompson"
       NAMELIST /MP_THOMPSON/ Nt_c
 
+      !bloss: Supply parameters controlling isotopic fractionation
+      !         in a namelist called MP_WISO
+      NAMELIST /MP_WISO/ fractionate
+
       !bloss: Make a namelist that shouldn't ever be in the prm file.
       !  This lets you diagnose whether the namelist was missing or
       !  if there was an error reading the namelist.  My feeling is
@@ -325,6 +333,14 @@
       !  missing but that the run should stop if the MP_THOMPSON namelist
       !  was in the file but there was an error reading it.
       NAMELIST /bydswioubnuOZBSda/ placeholder
+
+      !bloss(2017-05-16): Decide whether we are in single or double precision and choose the 
+      !  right file that (if it exists) has precomputed lookup tables.
+     if(log10(EPSILON(1.)).lt.-10.) then ! double precision
+       lookup_table_fname = lookup_table_fname_double
+     else ! single precision 
+       lookup_table_fname = lookup_table_fname_single
+     end if
 
 !..Allocate space for lookup tables (J. Michalakes 2009Jun08).
       micro_init = .FALSE.
@@ -388,6 +404,28 @@
               READ(94,NML=MP_THOMPSON)
             end if
           end if
+
+          ! read MP_WISO namelist
+          READ(94,NML=MP_WISO,IOSTAT=ierr)
+          if(ierr.eq.0) then
+            write(6,*) 'Read MP_WISO namelist from prm file'
+          else
+            REWIND(94)
+            READ(94,NML=bydswioubnuOZBSda,IOSTAT=ierr_missing_namelist)
+            if(ierr_missing_namelist.eq.0) then
+              write(6,*) 'Please remove the bydswioubnuOZBSda namelist from '
+              write(6,*) ' your prm file.  Its absence is important in diagnosing'
+              write(6,*) ' errors in reading the MP_WISO namelist.'
+              STOP 'REMOVE bydswioubnuOZBSda NAMELIST FROM PRM FILE'
+            end if
+            if(ierr.eq.ierr_missing_namelist) then
+              write(6,*) 'No MP_WISO namelist found in prm file'
+              write(6,*) 'Running with default parameter choices'
+            else
+              write(6,*) 'Error reading MP_WISO namelist from prm file'
+              READ(94,NML=MP_WISO)
+            end if
+          end if
           CLOSE(94)
         end if
 
@@ -395,12 +433,16 @@
         write(6,*) 'The following lists the namelist settings within MP_THOMPSON'
         write(6,NML=MP_THOMPSON)
 
+        ! write namelist to standard output
+        write(6,*) 'The following lists the namelist settings within MP_WISO'
+        write(6,NML=MP_WISO)
+
 !..From Martin et al. (1994), assign gamma shape parameter mu for cloud
 !.. drops according to general dispersion characteristics (disp=~0.25
 !.. for Maritime and 0.45 for Continental).
 !.. disp=SQRT((mu+2)/(mu+1) - 1) so mu varies from 15 for Maritime
 !.. to 2 for really dirty air.
-      mu_c = MIN(15., (1000.E6/Nt_c + 2.))
+        mu_c = MIN(15., (1000.E6/Nt_c + 2.))
 !..Schmidt number to one-third used numerous times.
       Sc3 = Sc**(1./3.)
 !..Compute min ice diam from mass, min snow/graupel mass from diam.
@@ -689,134 +731,138 @@
         CALL wrf_debug(200, '!!!!!NO ICE PROCESSES!!!!!')
       end if
       if (.not. iiwarm) then
-
+        
 
         !bloss: Restrict lookup table file to qr_acr_qs and qr_acr_qg tables.
         !  This will keep the biggest lookup tables from being re-computed when
         !  changing the cloud droplet number concentration or cloud ice properties.
-        INQUIRE(FILE='thompson_lookup_tables_r1.bin', & ! rename as _r1 to avoid confusion w/old files.
-           EXIST=read_lookup_tables_from_file)
-
+        INQUIRE(FILE=lookup_table_fname, & ! rename as _r1 to avoid confusion w/old files.
+             EXIST=lookup_tables_file_exists)
+        read_lookup_tables_from_file = lookup_tables_file_exists
         if(read_lookup_tables_from_file) then
-          CALL wrf_debug(200, '  TRYING TO GET LOOKUP TABLES FROM FILE')
-          OPEN(UNIT=92,FILE='thompson_lookup_tables_r1.bin', &
+          CALL wrf_debug(155, '  TRYING TO GET LOOKUP TABLES FROM FILE')
+          OPEN(UNIT=92,FILE=lookup_table_fname, &
                FORM='unformatted')
 
           ! read lookup table dimensions from file
-          read(92) nbins_test, &
+          read(92,IOSTAT=ioerror) nbins_test, &
                nbr_test, nbs_test, nbg_test, &
                ntb_r_test, ntb_s_test, ntb_g_test, &
                ntb_g1_test, ntb_r1_test, ntb_t_test
+          if(ioerror.ne.0) then
+            ! error reading file
+            write(*,*) 'Failed to read integers from thompson_lookup_tables_r1.bin'
+            read_lookup_tables_from_file = .false.
+          else
+            !check that the table dimensions in the file match those above.
+            if(nbins.ne.nbins_test) read_lookup_tables_from_file = .false.
+            if(nbr.ne.nbr_test) read_lookup_tables_from_file = .false.
+            if(nbs.ne.nbs_test) read_lookup_tables_from_file = .false.
+            if(nbg.ne.nbg_test) read_lookup_tables_from_file = .false.
+            if(ntb_r.ne.ntb_r_test) read_lookup_tables_from_file = .false.
+            if(ntb_s.ne.ntb_s_test) read_lookup_tables_from_file = .false.
+            if(ntb_g.ne.ntb_g_test) read_lookup_tables_from_file = .false.
+            if(ntb_g1.ne.ntb_g1_test) read_lookup_tables_from_file = .false.
+            if(ntb_r1.ne.ntb_r1_test) read_lookup_tables_from_file = .false.
+            if(ntb_t.ne.ntb_t_test) read_lookup_tables_from_file = .false.
+          end if
 
-        !check that the table dimensions in the file match those above.
-        if(nbins.ne.nbins_test) read_lookup_tables_from_file = .false.
-!!$        if(nbc.ne.nbc_test) read_lookup_tables_from_file = .false.
-!!$        if(nbi.ne.nbi_test) read_lookup_tables_from_file = .false.
-        if(nbr.ne.nbr_test) read_lookup_tables_from_file = .false.
-        if(nbs.ne.nbs_test) read_lookup_tables_from_file = .false.
-        if(nbg.ne.nbg_test) read_lookup_tables_from_file = .false.
-!!$        if(ntb_c.ne.ntb_c_test) read_lookup_tables_from_file = .false.
-!!$        if(ntb_i.ne.ntb_i_test) read_lookup_tables_from_file = .false.
-        if(ntb_r.ne.ntb_r_test) read_lookup_tables_from_file = .false.
-        if(ntb_s.ne.ntb_s_test) read_lookup_tables_from_file = .false.
-        if(ntb_g.ne.ntb_g_test) read_lookup_tables_from_file = .false.
-        if(ntb_g1.ne.ntb_g1_test) read_lookup_tables_from_file = .false.
-        if(ntb_r1.ne.ntb_r1_test) read_lookup_tables_from_file = .false.
-!!$        if(ntb_i1.ne.ntb_i1_test) read_lookup_tables_from_file = .false.
-        if(ntb_t.ne.ntb_t_test) read_lookup_tables_from_file = .false.
-        
-        ! read microphysical parameters from file.
-        read(92) mu_r_test, am_r_test, bm_r_test, av_r_test, bv_r_test, D0r_test, &
-             mu_s_test, Kap0_test, Kap1_test, Lam0_test, Lam1_test, & ! extra snow parameters
-             am_s_test, bm_s_test, av_s_test, bv_s_test, fv_s_test, D0s_test, &
-             mu_g_test, am_g_test, bm_g_test, av_g_test, bv_g_test, D0g_test
-
-        !check that the microphysical parameters used to compute the lookup table
-        !   in the file match those above.  If not, recompute the table.
-        if(mu_r.ne.mu_r_test) read_lookup_tables_from_file = .false. ! rain parameters
-        if(am_r.ne.am_r_test) read_lookup_tables_from_file = .false.
-        if(bm_r.ne.bm_r_test) read_lookup_tables_from_file = .false.
-        if(av_r.ne.av_r_test) read_lookup_tables_from_file = .false.
-        if(bv_r.ne.bv_r_test) read_lookup_tables_from_file = .false.
-        if(D0r.ne.D0r_test) read_lookup_tables_from_file = .false.
-
-        if(mu_s.ne.mu_s_test) read_lookup_tables_from_file = .false. ! snow parameters
-        if(Kap0.ne.Kap0_test) read_lookup_tables_from_file = .false.
-        if(Kap1.ne.Kap1_test) read_lookup_tables_from_file = .false.
-        if(Lam0.ne.Lam0_test) read_lookup_tables_from_file = .false.
-        if(Lam1.ne.Lam1_test) read_lookup_tables_from_file = .false.
-        if(am_s.ne.am_s_test) read_lookup_tables_from_file = .false.
-        if(bm_s.ne.bm_s_test) read_lookup_tables_from_file = .false.
-        if(av_s.ne.av_s_test) read_lookup_tables_from_file = .false.
-        if(bv_s.ne.bv_s_test) read_lookup_tables_from_file = .false.
-        if(fv_s.ne.fv_s_test) read_lookup_tables_from_file = .false.
-        if(D0s.ne.D0s_test) read_lookup_tables_from_file = .false.
-
-        if(mu_g.ne.mu_g_test) read_lookup_tables_from_file = .false. ! graupel parameters
-        if(am_g.ne.am_g_test) read_lookup_tables_from_file = .false.
-        if(bm_g.ne.bm_g_test) read_lookup_tables_from_file = .false.
-        if(av_g.ne.av_g_test) read_lookup_tables_from_file = .false.
-        if(bv_g.ne.bv_g_test) read_lookup_tables_from_file = .false.
-        if(D0g.ne.D0g_test) read_lookup_tables_from_file = .false.
-
-        if(.NOT.read_lookup_tables_from_file) CLOSE(92)
-      end if
-      if(read_lookup_tables_from_file) then
-        ! get tables computed in qr_acr_qg
-        READ(92,IOSTAT=ioerror) tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, &
-             tnr_racg, tnr_gacr
-        if(ioerror.ne.0) read_lookup_tables_from_file = .false.
-        ! get tables computed in qr_acr_qs
-        READ(92,IOSTAT=ioerror) tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
-             tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
-             tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2
-        if(ioerror.ne.0) read_lookup_tables_from_file = .false.
-        ! get tables computed in freezeH2O and qi_aut_qs
-        READ(92,IOSTAT=ioerror) tpi_qcfz, tni_qcfz, tpi_qrfz, tpg_qrfz, &
-             tni_qrfz, tnr_qrfz, tps_iaus, tni_iaus, tpi_ide
-        if(ioerror.ne.0) read_lookup_tables_from_file = .false.
-        CLOSE(92)
-        if(read_lookup_tables_from_file) then
-          CALL wrf_debug(200, '  READ RAIN-SNOW-GRAUPEL ACCRETION LOOKUP TABLES FROM FILE')
+          ! read microphysical parameters from file.
+          read(92,IOSTAT=ioerror) mu_r_test, am_r_test, bm_r_test, av_r_test, bv_r_test, D0r_test, &
+               mu_s_test, Kap0_test, Kap1_test, Lam0_test, Lam1_test, & ! extra snow parameters
+               am_s_test, bm_s_test, av_s_test, bv_s_test, fv_s_test, D0s_test, &
+               mu_g_test, am_g_test, bm_g_test, av_g_test, bv_g_test, D0g_test
+          if(ioerror.ne.0) then
+            ! error reading file
+            write(*,*) 'Failed to read parameters from thompson_lookup_tables_r1.bin'
+            read_lookup_tables_from_file = .false.
+          else
+            !check that the microphysical parameters used to compute the lookup table
+            !   in the file match those above.  If not, recompute the table.
+            if(mu_r.ne.mu_r_test) read_lookup_tables_from_file = .false. ! rain parameters
+            if(am_r.ne.am_r_test) read_lookup_tables_from_file = .false.
+            if(bm_r.ne.bm_r_test) read_lookup_tables_from_file = .false.
+            if(av_r.ne.av_r_test) read_lookup_tables_from_file = .false.
+            if(bv_r.ne.bv_r_test) read_lookup_tables_from_file = .false.
+            if(D0r.ne.D0r_test) read_lookup_tables_from_file = .false.
+            if(mu_s.ne.mu_s_test) read_lookup_tables_from_file = .false. ! snow parameters
+            if(Kap0.ne.Kap0_test) read_lookup_tables_from_file = .false.
+            if(Kap1.ne.Kap1_test) read_lookup_tables_from_file = .false.
+            if(Lam0.ne.Lam0_test) read_lookup_tables_from_file = .false.
+            if(Lam1.ne.Lam1_test) read_lookup_tables_from_file = .false.
+            if(am_s.ne.am_s_test) read_lookup_tables_from_file = .false.
+            if(bm_s.ne.bm_s_test) read_lookup_tables_from_file = .false.
+            if(av_s.ne.av_s_test) read_lookup_tables_from_file = .false.
+            if(bv_s.ne.bv_s_test) read_lookup_tables_from_file = .false.
+            if(fv_s.ne.fv_s_test) read_lookup_tables_from_file = .false.
+            if(D0s.ne.D0s_test) read_lookup_tables_from_file = .false.
+            if(mu_g.ne.mu_g_test) read_lookup_tables_from_file = .false. ! graupel parameters
+            if(am_g.ne.am_g_test) read_lookup_tables_from_file = .false.
+            if(bm_g.ne.bm_g_test) read_lookup_tables_from_file = .false.
+            if(av_g.ne.av_g_test) read_lookup_tables_from_file = .false.
+            if(bv_g.ne.bv_g_test) read_lookup_tables_from_file = .false.
+            if(D0g.ne.D0g_test) read_lookup_tables_from_file = .false.
+            if(.NOT.read_lookup_tables_from_file) CLOSE(92)
+          end if
         end if
-      end if
-      if(.NOT.read_lookup_tables_from_file) then
-!..Rain collecting graupel & graupel collecting rain.
+        if(read_lookup_tables_from_file) then
+          ! get tables computed in qr_acr_qg
+          READ(92,IOSTAT=ioerror) tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, &
+               tnr_racg, tnr_gacr
+          if(ioerror.ne.0) then
+            write(*,*) 'Failed to read first set of tables from thompson_lookup_tables_r1.bin'
+            read_lookup_tables_from_file = .false.
+          end if
+          ! get tables computed in qr_acr_qs
+          READ(92,IOSTAT=ioerror) tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
+               tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
+               tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2
+          if(ioerror.ne.0) then
+            write(*,*) 'Failed to read second set of tables from thompson_lookup_tables_r1.bin'
+            read_lookup_tables_from_file = .false.
+          end if
+          CLOSE(92)
+          if(read_lookup_tables_from_file) then
+          CALL wrf_debug(200, '  READ RAIN-SNOW-GRAUPEL ACCRETION LOOKUP TABLES FROM FILE')
+          end if
+        end if
+        if(.NOT.read_lookup_tables_from_file) then
+          !..Rain collecting graupel & graupel collecting rain.
       CALL wrf_debug(200, '  creating rain collecting graupel table')
       CALL wrf_debug(200, '  This may take a few minutes on a sinlge processor...')
-      call qr_acr_qg
-!..Rain collecting snow & snow collecting rain.
+          call qr_acr_qg
+          !..Rain collecting snow & snow collecting rain.
       CALL wrf_debug(200, '  creating rain collecting snow table')
       CALL wrf_debug(200, '  This may take a few minutes on a sinlge processor...')
-      call qr_acr_qs
+          call qr_acr_qs
 
-      !bloss: Write out microphysical lookup tables to file
-      OPEN(UNIT=92,FILE='thompson_lookup_tables_r1.bin', &
-           FORM='unformatted')
+          !bloss: Write out microphysical lookup tables to file
+!bloss TODO: Figure out how to write this only from the master process.
+          if(.NOT.lookup_tables_file_exists) then
+            OPEN(UNIT=92,FILE=lookup_table_fname, &
+                 FORM='unformatted')
 
-      ! write lookup table dimensions to file
-      write(92) nbins, &
-               nbr, nbs, nbg, &
-               ntb_r, ntb_s, ntb_g, &
-               ntb_g1, ntb_r1, ntb_t
+            ! write lookup table dimensions to file
+            write(92) nbins, &
+                 nbr, nbs, nbg, &
+                 ntb_r, ntb_s, ntb_g, &
+                 ntb_g1, ntb_r1, ntb_t
 
-      ! write microphysical parameters to file, so that we can check for consistency
-      !   before deciding that we don't need to recompute the lookup tables.
-      write(92) mu_r, am_r, bm_r, av_r, bv_r, D0r, &
-             mu_s, Kap0, Kap1, Lam0, Lam1, & ! extra snow parameters
-             am_s, bm_s, av_s, bv_s, fv_s, D0s, &
-             mu_g, am_g, bm_g, av_g, bv_g, D0g
+            ! write microphysical parameters to file, so that we can check for consistency
+            !   before deciding that we don't need to recompute the lookup tables.
+            write(92) mu_r, am_r, bm_r, av_r, bv_r, D0r, &
+                 mu_s, Kap0, Kap1, Lam0, Lam1, & ! extra snow parameters
+                 am_s, bm_s, av_s, bv_s, fv_s, D0s, &
+                 mu_g, am_g, bm_g, av_g, bv_g, D0g
 
-      WRITE(92) tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, &
-           tnr_racg, tnr_gacr ! computed in qr_acr_qg
-      WRITE(92) tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
-           tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
-           tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2 ! computed in qr_acr_qs
-      WRITE(92) tpi_qcfz, tni_qcfz, tpi_qrfz, tpg_qrfz, & 
-           tni_qrfz, tnr_qrfz, & !computed in freezeH2O
-           tps_iaus, tni_iaus, tpi_ide  ! computed in qi_aut_qs
-      CLOSE(92)
-      endif ! .NOT.read_lookup_tables_from_file
+            WRITE(92) tcg_racg, tmr_racg, tcr_gacr, tmg_gacr, &
+                 tnr_racg, tnr_gacr ! computed in qr_acr_qg
+            WRITE(92) tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, &
+                 tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
+                 tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2 ! computed in qr_acr_qs
+            CLOSE(92)
+          end if
+        endif ! .NOT.read_lookup_tables_from_file
 
 !..Cloud water and rain freezing (Bigg, 1953).
       CALL wrf_debug(200, '  creating freezing of water drops table')
@@ -1495,9 +1541,6 @@
       REAL, DIMENSION(niso) :: alpha_equil_liq, alpha_equil_rain, &
            alpha_equil_ice, iso_Sc3
 
-      !bloss: turns off isotopic fractionation in the microphysics
-      !        !!!THIS IS INTENDED MAINLY FOR TESTING PURPOSES!!!
-      LOGICAL, PARAMETER :: fractionate = .true. 
 !+---+
       debug_flag = .false.
 !     if (ii.eq.315 .and. jj.eq.2) debug_flag = .true.
@@ -2113,12 +2156,12 @@
            !   factor.  This is probably a small effect, but seems
            !   like a more faithful representation of the isotope
            !   physics, so that we use it here.
-           tabs_ice_surface = temp(k) &
-                + (t1_subl/4./pi)*ssati(k)*rvs*gamsc/rvs_p
-           do nn = 1,niso
-             alpha_equil_ice(nn) = &
-                  alfaI_equilibrium(tabs_ice_surface,iso_index(nn))
-           end do
+             tabs_ice_surface = temp(k) &
+                  + (t1_subl/4./pi)*ssati(k)*rvs*gamsc/rvs_p
+             do nn = 1,niso
+               alpha_equil_ice(nn) = &
+                    alfaI_equilibrium(tabs_ice_surface,iso_index(nn))
+             end do
            !bloss: commentary 1: interestingly, the surface temperature
            ! would be the same for snow, ice and graupel, assuming
            ! that the ventilation factors for heat and standard water
@@ -2414,9 +2457,9 @@
            prr_sml(k) = prr_sml(k) + 4218.*olfus*tempc &
                                    * (prr_rcs(k)+prs_scw(k))
            prr_sml(k) = MIN(DBLE(rs(k)*odts), MAX(0.D0, prr_sml(k)))
-           pnr_sml(k) = smo0(k)/rs(k)*prr_sml(k) * 10.0**(-0.75*tempc)      ! RAIN2M
-           pnr_sml(k) = MIN(DBLE(smo0(k)*odts), pnr_sml(k))
-           if (tempc.gt.3.5 .or. rs(k).lt.0.005E-3) pnr_sml(k)=0.0
+             pnr_sml(k) = smo0(k)/rs(k)*prr_sml(k) * 10.0**(-0.75*tempc)      ! RAIN2M
+             pnr_sml(k) = MIN(DBLE(smo0(k)*odts), pnr_sml(k))
+             if (tempc.gt.3.5 .or. rs(k).lt.0.005E-3) pnr_sml(k)=0.0
            if (ssati(k).lt. 0.) then
             prs_sde(k) = C_cube*t1_subl*diffu(k)*ssati(k)*rvs &
                          * (t1_qs_sd*smo1(k) &
@@ -3356,13 +3399,13 @@
               + t2_qr_ev*vsc2(k)*rhof2(k)*((lamr+0.5*fv_r)**(-cre(11))))&
               /(crg(10)*ilamr(k)**cre(10))
             do nn = 1,niso
-              ! compute equilibrium fractionation factor relevant to rain temperature
-              alpha_equil_rain(nn) = &
-                   alfaW_equilibrium(tabs_rain_surface,iso_index(nn))
-              
-              ! equilibrium fractionation factor for ambient air temp.
+                ! compute equilibrium fractionation factor relevant to rain temperature
+                alpha_equil_rain(nn) = &
+                     alfaW_equilibrium(tabs_rain_surface,iso_index(nn))
+
+                ! equilibrium fractionation factor for ambient air temp.
               updated_temp = temp(k)-DT*lvap(k)*ocp(k)*prv_rev(k)*(1-IFDRY)
-              alpha_equil_liq(nn) = alfaW_equilibrium( &
+                alpha_equil_liq(nn) = alfaW_equilibrium( &
                    updated_temp, iso_index(nn))
 !!$              alpha_equil_liq(nn) = alfaW_equilibrium( &
 !!$                   temp(k)-DT*lvap(k)*ocp(k)*prv_rev(k)*(1-IFDRY), & !updated temp
@@ -3958,7 +4001,7 @@
            + pri_rci(:) - pri_rfz(:) - pri_ihm(:) ) / rho(:)
 
       !bloss(2014-10): save aggregated tendencies to compute budgets for liquid/ice precipitation
-      do nn = 1,niso
+        do nn = 1,niso
         !bloss(dep/sub/revp): Separate tendencies for deposition, sublimation and rain evaporation
         !  All based on the sign of deposition/sublimation for standard water.
         where(prs_ide(:) > 0.) 
@@ -3988,7 +4031,7 @@
         iso_qice_coll(:,nn) = iso_prs_sci(:,nn) / rho(:) ! collection of cloud ice by snow
         iso_qice_rim(:,nn) = ( iso_prs_scw(:,nn) + iso_prg_scw(:,nn) + iso_prg_gcw(:,nn) &
              + iso_pri_rci(:,nn) - iso_pri_rfz(:,nn) - iso_pri_ihm(:,nn) ) / rho(:)
-      end do
+        end do
 
       end subroutine mp_thompiso
 !+---+-----------------------------------------------------------------+
@@ -4745,7 +4788,7 @@
 !..All other moments based on reference, 2nd moment.  If bm_s.ne.2,
 !.. then we must compute actual 2nd moment and use as reference.
          if (bm_s.gt.(2.0-1.e-3) .and. bm_s.lt.(2.0+1.e-3)) then
-            smo2 = smob
+         smo2 = smob
          else
             loga_ = sa(1) + sa(2)*tc0 + sa(3)*bm_s &
      &         + sa(4)*tc0*bm_s + sa(5)*tc0*tc0 &
