@@ -137,6 +137,7 @@
      &                 ,LOWLYR,XLAND,SICE,SNOW                         &
      &                 ,TKE_MYJ,EXCH_H,USTAR,ZNT,EL_MYJ,PBLH,KPBL,CT   &
      &                 ,AKHS,AKMS,ELFLX,MIXHT                          &   !PLee (3/07)
+     &                 ,QFX                                            & !bloss/qfx
      &                 ,RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN     &
      &                 ,RQIBLTEN,RQSBLTEN,RQRBLTEN,RQGBLTEN            & !BSF
      &                 ,RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN         & !bloss(2016-10)
@@ -202,6 +203,12 @@
      &    ,INTENT(INOUT) ::                    EXCH_H,TKE_MYJ
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: CHKLOWQ,ELFLX
+!
+!bloss/qfx: pass in QFX, instead of deriving it from the latent heat flux (ELFLX)
+!   This is desirable because the treatment of latent heat flux seems to be
+!   inconsistent for icy surfaces between myjsfc (where ELFLX=Lcond*QFX) and 
+!   myjpbl (where QFX=ELFLX/Lcond for liquid surfaces and QFX=ELCOND/Lsub for ice/snow).
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: QFX !bloss/qfx
 !
 !----------------------------------------------------------------------
 !***
@@ -619,18 +626,37 @@
           AKHS_DENS=AKHS(I,J)*RHOK(KTE+1-LLOW,I)
 !
           IF(SEAMASK<0.5)THEN
-            QFC1=XLV*CHKLOWQ(I,J)*AKHS_DENS
-!
-            IF(SNOW(I,J)>0..OR.SICE(I,J)>0.5)THEN
-              QFC1=QFC1*RLIVWV
-            ENDIF
+!bloss/qfx: Use QFX, the evaporation mass flux from the surface, instead of the latent heat 
+!    flux (ELFLX) so that we do not need to normalize by the latent heat, which depends on
+!    the surface type (ice/liquid/mixed).
+!  
+            QFC1=CHKLOWQ(I,J)*AKHS_DENS
 !
             IF(QFC1>0.)THEN
               QLOW=QK(KTE+1-LLOW)
-              QSFC(I,J)=QLOW+ELFLX(I,J)/QFC1
+              QSFC(I,J)=QLOW+QFX(I,J)/QFC1
             ENDIF
+!bloss/qfx            QFC1=XLV*CHKLOWQ(I,J)*AKHS_DENS
+!bloss/qfx!
+!bloss/qfx            IF(SNOW(I,J)>0..OR.SICE(I,J)>0.5)THEN
+!bloss/qfx              QFC1=QFC1*RLIVWV
+!bloss/qfx            ENDIF
+!bloss/qfx!
+!bloss/qfx            IF(QFC1>0.)THEN
+!bloss/qfx              QLOW=QK(KTE+1-LLOW)
+!bloss/qfx              QSFC(I,J)=QLOW+ELFLX(I,J)/QFC1
+!bloss/qfx            ENDIF
 !
           ELSE
+!bloss/qfx (NOTE, 2017-09): The above treatment for land/ice points enforces the surface flux
+!  to be that computed in the surface flux scheme.  However, for ocean points, the
+!  boundary condition is dirichlet (a fixed value of QVAPOR) and equal to the 
+!  saturation specific humidity at the surface.  As a result, the surface flux over
+!  ocean points will not be equal to the QFX computed in the surface scheme and output
+!  in the wrfout netcdf file.  This will complicate efforts to contrain the mass budget
+!  for moisture.  It is possible to back out the actual evaporation flux using the 
+!  column-integrated moisture budget, and I may try to do this.
+
             PSFC=PINT(I,LOWLYR(I,J),J)
             EXNSFC=(1.E5/PSFC)**CAPA
             QSFC(I,J)=PQ0SEA/PSFC                                      &
