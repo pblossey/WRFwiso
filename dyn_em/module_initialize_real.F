@@ -538,7 +538,8 @@ integer::oops1,oops2
       END IF
 
 !..Begin addition (bloss/wiso):  The following code allows the isotopic composition of the 
-!     surface moisture flux to be fixed at a value specified in wrf_input through WPS and real.exe.
+!     surface waters and the urface moisture flux (in the case of land or sea ice)
+!     to be fixed at a value specified in wrf_input through WPS and real.exe.
 
       !bloss: Initialization for R_HDO_SURF
       write(a_message,*) 'flag_dhdosurf = ', flag_dhdosurf
@@ -558,6 +559,28 @@ integer::oops1,oops2
         DO j=jts,min(jde,jte)
           DO i=its,min(ide-1,ite)
             grid%R_O18_SURF(i,j) = 1. + 1.e-3*grid%do18surf_gc(i,j)
+          END DO
+        END DO
+      end IF
+
+      !bloss: Initialization for R_HDO_QFX
+      write(a_message,*) 'flag_dhdoqfx = ', flag_dhdoqfx
+      CALL wrf_debug ( 0 , a_message)
+      IF ( flag_dhdoqfx .EQ. 1 ) THEN
+        DO j=jts,min(jde,jte)
+          DO i=its,min(ide-1,ite)
+            grid%R_HDO_QFX(i,j) = 1. + 1.e-3*grid%dhdoqfx_gc(i,j)
+          END DO
+        END DO
+      end IF
+
+      !bloss: Initialization for R_O18_QFX
+      write(a_message,*) 'flag_do18qfx = ', flag_do18qfx
+      CALL wrf_debug ( 0 , a_message)
+      IF ( flag_do18qfx .EQ. 1 ) THEN
+        DO j=jts,min(jde,jte)
+          DO i=its,min(ide-1,ite)
+            grid%R_O18_QFX(i,j) = 1. + 1.e-3*grid%do18qfx_gc(i,j)
           END DO
         END DO
       end IF

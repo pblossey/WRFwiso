@@ -10,7 +10,8 @@ MODULE module_optional_input
               flag_qnwfa    , flag_qnifa    , &
               flag_sh       , flag_speccldl , flag_speccldf, &
               flag_dhdov    , flag_do18v    , & !bloss/wiso
-              flag_dhdosurf  , flag_do18surf    !bloss/wiso
+              flag_dhdosurf  , flag_do18surf, & !bloss/wiso
+              flag_dhdoqfx   , flag_do18qfx     !bloss/wiso
 
    INTEGER :: flag_soil_levels, flag_soil_layers
 
@@ -329,6 +330,8 @@ USE module_io_domain
       flag_do18v    = 0
       flag_dhdosurf  = 0
       flag_do18surf  = 0
+      flag_dhdoqfx   = 0
+      flag_do18qfx   = 0
 
       flag_name(1:8) = 'QV      '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
@@ -422,6 +425,16 @@ USE module_io_domain
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_do18surf  = itmp
+      END IF
+      flag_name(1:8) = 'dHDOQFX '
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_dhdoqfx   = itmp
+      END IF
+      flag_name(1:8) = 'dO18QFX '
+      CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
+      IF ( ierr .EQ. 0 ) THEN
+         flag_do18qfx   = itmp
       END IF
 
 !..End addition (bloss/wiso)

@@ -842,6 +842,8 @@ CONTAINS
 
      
 
+     write(a_message,*) 'flag_dHDOSURF = ', flag_dHDOSURF
+     CALL wrf_message ( a_message )            
      if(flag_dHDOSURF.eq.1) then
        !bloss/wiso: get deltaHDO value for surface waters
        !  Will help make isotopic surface fluxes consistent with the standard water fluxes.
@@ -872,6 +874,42 @@ CONTAINS
         DO J=JTS,min(JTE,JDE-1)
          DO I=ITS,min(ITE,IDE-1)
            grid%do18surf_gc(I,J)=dumdata(I,J,1)
+         ENDDO
+        ENDDO
+      end if
+
+     write(a_message,*) 'flag_dHDOQFX = ', flag_dHDOQFX
+     CALL wrf_message ( a_message )            
+     if(flag_dHDOQFX.eq.1) then
+       !bloss/wiso: get deltaHDO value for surface fluxes over land and sea ice
+       !  The isotopic content of those surface fluxes will be fixed to this value.
+    varName='DHDOQFX'
+    CALL retrieve_index(index,VarName,varname_all,nrecs,iret)
+    CALL mpi_file_read_at(iunit,file_offset(index+1),     &
+                             dumdata,hor_size,mpi_real4,             &
+                             mpi_status_ignore, ierr)
+
+        DO J=JTS,min(JTE,JDE-1)
+         DO I=ITS,min(ITE,IDE-1)
+           grid%dhdoqfx_gc(I,J)=dumdata(I,J,1)
+         ENDDO
+        ENDDO
+      end if
+
+     write(a_message,*) 'flag_dO18QFX = ', flag_dO18QFX
+     CALL wrf_message ( a_message )            
+     if(flag_dO18QFX.eq.1) then
+       !bloss/wiso: get deltaO18 value for surface fluxes over land and sea ice
+       !  The isotopic content of those surface fluxes will be fixed to this value.
+    varName='DO18QFX'
+    CALL retrieve_index(index,VarName,varname_all,nrecs,iret)
+    CALL mpi_file_read_at(iunit,file_offset(index+1),     &
+                             dumdata,hor_size,mpi_real4,             &
+                             mpi_status_ignore, ierr)
+
+        DO J=JTS,min(JTE,JDE-1)
+         DO I=ITS,min(ITE,IDE-1)
+           grid%do18qfx_gc(I,J)=dumdata(I,J,1)
          ENDDO
         ENDDO
       end if
