@@ -462,12 +462,13 @@ BENCH_START(surf_driver_tim)
      &        ,BLDTACTTIME=grid%bldtacttime                                              & 
      &        ,PSIM=psim          ,P_PHY=grid%p_hyd        ,Q10=grid%q10            &
      &        ,Q2=grid%q2              ,QFX=grid%qfx            ,QSFC=grid%qsfc          &
-     &        ,HDO_QFX=grid%hdo_qfx                                                     &
-     &        ,R_HDO_SURF=grid%r_hdo_surf &
-     &        ,HDO_QV=scalar(ims,kms,jms,P_HDO_QV)  & ! romps/bloss/wiso
-     &        ,O18_QFX=grid%o18_qfx                                                     &
-     &        ,R_O18_SURF=grid%r_o18_surf &
-     &        ,O18_QV=scalar(ims,kms,jms,P_O18_QV)  & ! romps/bloss/wiso
+     &        ,WISOTOPE=config_flags%wisotope                                           & !bloss/wiso
+     &        ,HDO_QFX=grid%hdo_qfx ,HDO_QV=scalar(ims,kms,jms,P_HDO_QV)  & ! romps/bloss/wiso
+     &        ,HDO_QZ0=grid%hdo_qz0, HDO_QSFC=grid%hdo_qsfc & !bloss/wiso (MYJ/Noah surface schemes)
+     &        ,R_HDO_SURF=grid%r_hdo_surf,R_HDO_QFX=grid%r_hdo_qfx  & !bloss/wiso (MYJ/Noah surface schemes)
+     &        ,O18_QFX=grid%o18_qfx,O18_QV=scalar(ims,kms,jms,P_O18_QV)  & ! romps/bloss/wiso 
+     &        ,O18_QZ0=grid%o18_qz0, O18_QSFC=grid%o18_qsfc & !bloss/wiso (MYJ/Noah surface schemes)
+     &        ,R_O18_SURF=grid%r_o18_surf,R_O18_QFX=grid%r_o18_qfx  & !bloss/wiso (MYJ/Noah surface schemes)
      &        ,QSHLTR=grid%qshltr      ,QZ0=grid%qz0            ,RAINCV=grid%raincv      &
      &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics         ,RHO=grid%rho            &
      &        ,RMOL=grid%rmol          ,SFCEVP=grid%sfcevp      ,SFCEXC=grid%sfcexc      &
@@ -926,6 +927,10 @@ BENCH_START(pbl_driver_tim)
      &        ,QG_CURR=moist(ims,kms,jms,P_QG), F_QG=F_QG                 &
      &        ,HOL=HOL, MOL=grid%mol, REGIME=grid%REGIME                  &
 !bloss/wiso: Current values and bl tendencies for water isotopologues (optional)
+     &        ,WISOTOPE=config_flags%wisotope                                       & !bloss/wiso
+     &        ,HDO_QFX=grid%hdo_qfx, HDO_QZ0=grid%hdo_qz0,HDO_QSFC=grid%hdo_qsfc & !bloss/wiso (MYJ PBL scheme)
+     &        ,O18_QFX=grid%o18_qfx, O18_QZ0=grid%o18_qz0,O18_QSFC=grid%o18_qsfc & !bloss/wiso (MYJ PBL scheme)
+     &        ,R_HDO_SURF=grid%r_hdo_surf, R_O18_SURF=grid%r_o18_surf     & !bloss/wiso
      &        ,RHDO_QVBLTEN=grid%rhdo_qvblten                             &
      &        ,RHDO_QCBLTEN=grid%rhdo_qcblten                             &
      &        ,RHDO_QIBLTEN=grid%rhdo_qiblten                             &
