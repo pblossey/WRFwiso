@@ -6,6 +6,7 @@ RM      =       rm -f
 
 
 MODULES = \
+	module_mp_water_isotopologues.o \
 	module_cam_shr_kind_mod.o \
 	module_cam_support.o \
 	module_cam_shr_const_mod.o \
@@ -80,7 +81,6 @@ MODULES = \
 	module_mp_fer_hires.o \
 	module_mp_HWRF.o \
 	module_mp_thompson.o \
-	module_mp_water_isotopologues.o \
 	module_mp_thompiso.o \
 	module_mp_full_sbm.o \
 	module_mp_fast_sbm.o \

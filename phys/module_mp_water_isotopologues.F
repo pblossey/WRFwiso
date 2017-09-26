@@ -24,6 +24,15 @@ MODULE module_mp_water_isotopologues
   CHARACTER(LEN=3), DIMENSION(18:20), PARAMETER :: &
        iso_string = (/ 'H2O', 'HDO', 'O18' /)
 
+  !bloss/wiso(2017-09): Add variables specifying a wind-speed-independent kinetic fractionation
+  !   coefficient for isotopic surface fluxes (from Pfahl & Wernli, 2009, JGR, doi:10.1029/2009JD012054)
+  REAL, PARAMETER :: kfac_surf_HDO = 0.9961, kfac_surf_O18 = 0.9925
+
+!..Controls for isotope implementation (MOSTLY FOR TESTING)
+!     can be set through MP_WISO namelist that is read in thompiso_init() in module_mp_thomiso.F
+  LOGICAL :: fractionate = .true. ! if false, turns off isotopic fractionation in the microphysics
+                                  !     and elsewhere in the model
+
   !iso_factor is a small number to make the contribution of isotopes to
   !  the mass negligible It is an inconvenience due to putting isotopes in
   !  microphysics.
