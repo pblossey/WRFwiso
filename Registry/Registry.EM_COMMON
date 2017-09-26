@@ -1845,10 +1845,19 @@ state    real  QFX              ij      misc        1         -      rh       "Q
 
 #..Begin addition (bloss/wiso)
 
+# bloss/wiso: Set to true to Enable water isotopologues physics
+rconfig   logical     wisotope            namelist,physics               1              .false. rh       "wisotope"                "Set to true to enable water isotopologue physics -- only supported for mp_physics=108 and MYJ sfc/pbl schemes"      ""
+
 state    real  HDO_QFX          ij      misc        1         -      rh       "HDO_QFX"               "UPWARD HDO MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
 state    real  O18_QFX          ij      misc        1         -      rh       "O18_QFX"               "UPWARD O18 MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
+state    real  HDO_QZ0          ij      misc        1         -      r        "HDO_QZ0"               "NEAR-SURFACE (at ZNT) SPECIFIC HUMIDITY OF HDO (rel. to SMOW)"  "kg kg-1"      
+state    real  O18_QZ0          ij      misc        1         -      r        "O18_QZ0"               "NEAR-SURFACE (at ZNT) SPECIFIC HUMIDITY OF O18 (rel. to SMOW)"  "kg kg-1"      
+state    real  HDO_QSFC          ij      misc        1         -      r       "HDO_QSFC"               "SURFACE SPECIFIC HUMIDITY OF HDO (rel. to SMOW)"  "kg kg-1"      
+state    real  O18_QSFC          ij      misc        1         -      r       "O18_QSFC"               "SURFACE SPECIFIC HUMIDITY OF O18 (rel. to SMOW)"  "kg kg-1"      
 state    real  R_HDO_SURF       ij      misc        1         -      i01rhdu       "R_HDO_SURF"            "HDO ISOTOPIC RATIO OF SURFACE WATERS (rel. to SMOW)"  ""      
 state    real  R_O18_SURF       ij      misc        1         -      i01rhdu       "R_O18_SURF"            "O18 ISOTOPIC RATIO OF SURFACE WATERS (rel. to SMOW)"  ""      
+state    real  R_HDO_QFX       ij      misc        1         -      i01rhdu       "R_HDO_QFX"            "HDO ISOTOPIC RATIO OF SURFACE MOISTURE FLUX FROM LAND/SEA ICE (rel. to SMOW)"  ""      
+state    real  R_O18_QFX       ij      misc        1         -      i01rhdu       "R_O18_QFX"            "O18 ISOTOPIC RATIO OF SURFACE MOISTURE FLUX FROM LAND/SEA ICE (rel. to SMOW)"  ""      
 
 #..End addition (bloss/wiso)
 
@@ -2740,8 +2749,6 @@ state integer nodyn_dummy - dyn_nodyn -  -  -  "" "" ""
 rconfig   integer     windfarm_opt        namelist,physics      max_domains    0       rh       "windfarm_opt"                ""      ""
 rconfig   integer     windfarm_ij         namelist,physics      1              0       rh       "windfarm_ij"                ""      ""
 
-# bloss/wiso: Enable water isotopologues physics
-rconfig   logical     wisotope            derived               1              .false. rh       "wisotope"                "True if water isotopologue physics is enabled"      ""
 #
 #---------------------------------------------------------------------------------------------------------------------------------------
 # Package Declarations
