@@ -83,7 +83,10 @@ CONTAINS
              !  Optional moisture tracer flags
                  ,f_qv,f_qc,f_qr                                   &
                  ,f_qi,f_qs,f_qg                                   &
-             !bloss/wiso: Optional isotopic moisture tracers, bl tendencies and tracer flags
+             !bloss/wiso: Optional inputs for isotopic surface fluxes/PBL tendencies through MYJ scheme
+                 ,wisotope                        & !bloss/wiso
+                 ,hdo_qfx,hdo_qz0,hdo_qsfc,r_hdo_surf        & !bloss/wiso
+                 ,o18_qfx,o18_qz0,o18_qsfc,r_o18_surf        & !bloss/wiso
                  ,hdo_qv_curr, hdo_qc_curr, hdo_qi_curr            & ! HDO mixing ratio
                  ,rhdo_qvblten,rhdo_qcblten,rhdo_qiblten           & ! BL mixing tendency for HDO
                  ,f_hdo_qv,f_hdo_qc,f_hdo_qi                       & ! tracer flags
@@ -273,6 +276,14 @@ CONTAINS
 !-- SNOWC         flag indicating snow coverage (1 for snow cover)
 !-- HFX           upward heat flux at the surface (W/m^2)
 !-- QFX           upward moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX       upward flux of the water isotopologue HDO at the surface (kg/m^2/s, normalized by R_SMOW)
+!-- O18_QFX       upward flux of the water isotopologue H_2^18O at the surface (kg/m^2/s, normalized by R_SMOW)
+!-- HDO_QZ0       specific humidity of the water isotopologue HDO at ZNT (kg/kg, normalized by R_SMOW)
+!-- O18_QZ0       specific humidity of the water isotopologue H_2^18O at ZNT (kg/kg, normalized by R_SMOW)
+!-- HDO_QSFC      specific humidity of the water isotopologue HDO at the surface (kg/kg, normalized by R_SMOW)
+!-- O18_QSFC      specific humidity of the water isotopologue H_2^18O at the surface (kg/kg, normalized by R_SMOW)
+!-- R_HDO_SURF    HDO isotopic ratio of surface waters
+!-- R_O18_SURF    H_2^18O isotopic ratio of surface waters
 !-- REGIME        flag indicating PBL regime (stable, unstable, etc.)
 !-- exch_m        exchange coefficient for momentum, m^2/s
 !-- exch_h        exchange coefficient for heat, K m/s 
@@ -684,6 +695,14 @@ CONTAINS
                      ,rhdo_qvblten,rhdo_qcblten,rhdo_qiblten    & !bloss/wiso
                      ,o18_qv_curr, o18_qc_curr, o18_qi_curr    & !bloss/wiso
                      ,ro18_qvblten,ro18_qcblten,ro18_qiblten     !bloss/wiso
+
+   !bloss/wiso: Isotopic surface fluxes and specific humidities (at/near surface)
+   LOGICAL, INTENT(IN) :: wisotope
+   REAL,       DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT)    :: & !bloss/wiso
+               HDO_QFX, HDO_QZ0, HDO_QSFC, O18_QFX, O18_QZ0, O18_QSFC !bloss/wiso
+
+   REAL,       DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN)    :: & !bloss/wiso
+               R_HDO_SURF, R_O18_SURF !bloss/wiso
 
    REAL,       DIMENSION( ims:ime, jms:jme )                    , &
                OPTIONAL                                         , &
@@ -1493,11 +1512,15 @@ CONTAINS
               ,TKE_MYJ=tke_pbl,EXCH_H=exch_h,USTAR=ust,ZNT=znt      &
               ,EL_MYJ=el_pbl,PBLH=pblh,KPBL=kpbl,CT=ct              &
               ,AKHS=akhs,AKMS=akms,ELFLX=lh,MIXHT=mixht             &  
-              ,QFX=qfx                                              & !bloss/qfx
               ,RUBLTEN=rublten,RVBLTEN=rvblten,RTHBLTEN=rthblten    &
               ,RQVBLTEN=rqvblten,RQCBLTEN=rqcblten                  &
               ,RQIBLTEN=rqiblten,RQSBLTEN=rqsblten                  & !BSF
               ,RQRBLTEN=rqrblten,RQGBLTEN=rqgblten                  & !BSF
+              ,QFX=qfx              & !bloss/qfx
+              ,WISOTOPE=wisotope                                    & !bloss/wiso
+              ,HDO_QFX=hdo_qfx,HDO_QZ0=hdo_qz0,HDO_QSFC=hdo_qsfc      & !bloss/qfx, bloss/wiso
+              ,O18_QFX=o18_qfx,O18_QZ0=o18_qz0,O18_QSFC=o18_qsfc      & !bloss/qfx, bloss/wiso
+              ,R_HDO_SURF=r_hdo_surf,R_O18_SURF=r_o18_surf         & !bloss/wiso
               ,HDO_QV=hdo_qv_curr, RHDO_QVBLTEN=rhdo_qvblten   & !bloss/wiso
               ,HDO_QCW=hdo_qc_curr, RHDO_QCBLTEN=rhdo_qcblten   & !bloss/wiso
               ,HDO_QCI=hdo_qi_curr, RHDO_QIBLTEN=rhdo_qiblten   & !bloss/wiso

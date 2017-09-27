@@ -6,6 +6,8 @@
 !
       USE MODULE_MODEL_CONSTANTS
       USE MODULE_WRF_ERROR !bloss: allows optional output of max/min check on blten
+      USE module_mp_water_isotopologues, only: &
+           fractionate, alfaW_equilibrium, kfac_surf_HDO, kfac_surf_O18
 !
 !-----------------------------------------------------------------------
 !
@@ -131,8 +133,6 @@
 !----------------------------------------------------------------------
       SUBROUTINE MYJPBL(DT,STEPBL,HT,DZ                                &
      &                 ,PMID,PINT,TH,T,EXNER,QV,QCW,QCI,QCS,QCR,QCG    & !BSF
-     &                 ,HDO_QV,HDO_QCW,HDO_QCI & !bloss (2016-10)
-     &                 ,O18_QV,O18_QCW,O18_QCI & !bloss (2016-10)
      &                 ,U,V,RHO,TSK,QSFC,CHKLOWQ,THZ0,QZ0,UZ0,VZ0      & !BSF
      &                 ,LOWLYR,XLAND,SICE,SNOW                         &
      &                 ,TKE_MYJ,EXCH_H,USTAR,ZNT,EL_MYJ,PBLH,KPBL,CT   &
@@ -140,6 +140,12 @@
      &                 ,QFX                                            & !bloss/qfx
      &                 ,RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN     &
      &                 ,RQIBLTEN,RQSBLTEN,RQRBLTEN,RQGBLTEN            & !BSF
+     &                 ,WISOTOPE                                       & !bloss/wiso
+     &                 ,HDO_QFX,HDO_QZ0,HDO_QSFC                       & !bloss/qfx, bloss/wiso
+     &                 ,O18_QFX,O18_QZ0,O18_QSFC                       & !bloss/qfx, bloss/wiso
+     &                 ,R_HDO_SURF,R_O18_SURF                          & !bloss/wiso
+     &                 ,HDO_QV,HDO_QCW,HDO_QCI & !bloss (2016-10)
+     &                 ,O18_QV,O18_QCW,O18_QCI & !bloss (2016-10)
      &                 ,RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN         & !bloss(2016-10)
      &                 ,RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN         & !bloss(2016-10)
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
@@ -172,11 +178,7 @@
 !
       REAL,OPTIONAL,INTENT(IN),DIMENSION(IMS:IME,KMS:KME,JMS:JME)::    &  !BSF
                                                 QV,QCW,QCI,QCS,QCR,QCG    !BSF
-!bloss(2016-10): water isotopologues HDO and H2O18
-      REAL,OPTIONAL,INTENT(IN),DIMENSION(IMS:IME,KMS:KME,JMS:JME)::    &  !bloss
-           HDO_QV,HDO_QCW,HDO_QCI, & !bloss
-           O18_QV,O18_QCW,O18_QCI !bloss
-!
+
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT) :: PBLH,MIXHT            !PLee (3/07)
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: AKHS,AKMS
@@ -190,10 +192,33 @@
      &                                            ,RQIBLTEN,RQSBLTEN   &   !BSF
      &                                            ,RQRBLTEN,RQGBLTEN       !BSF
 !
+!bloss/qfx: pass in QFX, instead of deriving it from the latent heat flux (ELFLX)
+!   This is desirable because the treatment of latent heat flux seems to be
+!   inconsistent for icy surfaces between myjsfc (where ELFLX=Lcond*QFX) and 
+!   myjpbl (where QFX=ELFLX/Lcond for liquid surfaces and QFX=ELCOND/Lsub for ice/snow).
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: QFX !bloss/qfx
+!
+!bloss/wiso ... begin
+
+      LOGICAL, OPTIONAL, INTENT(IN) :: WISOTOPE !flag indicating whether isotopes are used
+!
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT), OPTIONAL :: &
+           HDO_QFX, HDO_QZ0, HDO_QSFC, O18_QFX, O18_QZ0, O18_QSFC !surface fluxes/specific humidities
+
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN), OPTIONAL :: &
+           R_HDO_SURF, R_O18_SURF !bloss/wiso
+
+      REAL,OPTIONAL,INTENT(IN),DIMENSION(IMS:IME,KMS:KME,JMS:JME)::    &  !bloss
+           HDO_QV,HDO_QCW,HDO_QCI, O18_QV,O18_QCW,O18_QCI ! mass mixing ratios
+!
 !bloss(2016-10): output arguments for water isotopic tendencies due to pbl mixing
       REAL,OPTIONAL,INTENT(OUT),DIMENSION(IMS:IME,KMS:KME,JMS:JME)::   &   
      &       RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN      &  !bloss
      &      ,RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN         !bloss
+!
+      REAL :: Z0fac, kfac_HDO, kfac_O18
+
+!bloss/wiso ...end
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT) :: CT,QSFC,QZ0     &
      &                                                ,THZ0,USTAR      &
@@ -203,12 +228,6 @@
      &    ,INTENT(INOUT) ::                    EXCH_H,TKE_MYJ
 !
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: CHKLOWQ,ELFLX
-!
-!bloss/qfx: pass in QFX, instead of deriving it from the latent heat flux (ELFLX)
-!   This is desirable because the treatment of latent heat flux seems to be
-!   inconsistent for icy surfaces between myjsfc (where ELFLX=Lcond*QFX) and 
-!   myjpbl (where QFX=ELFLX/Lcond for liquid surfaces and QFX=ELCOND/Lsub for ice/snow).
-      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(IN) :: QFX !bloss/qfx
 !
 !----------------------------------------------------------------------
 !***
@@ -244,11 +263,6 @@
 !
       LOGICAL :: flQI,flQS,flQR,flQG  !BSF
 !
-!bloss(2016-10) add flags for isotopologues and indices into SPECIES array
-!
-      LOGICAL :: flHDO,flO18
-      INTEGER :: IDX_HDO_QV,IDX_O18_QV
-!
       INTEGER :: I,J,K,KFLIP,LLOW,LMH,LMXL, NUMS,NSPEC,NSP   !BSF
 !
       INTEGER,DIMENSION(ITS:ITE,JTS:JTE) :: LPBL
@@ -278,6 +292,12 @@
       REAL,DIMENSION(ITS:ITE,KTS:KTE-1,JTS:JTE) :: AKH,AKM
 !
       REAL,DIMENSION(ITS:ITE,KTS:KTE+1,JTS:JTE) :: ZINT
+!
+!bloss(2016-10) add flags for isotopologues and indices into SPECIES array
+!
+      LOGICAL :: flHDO,flO18
+      INTEGER :: IDX_HDO_QV,IDX_O18_QV
+      REAL :: HDO_QLOW, O18_QLOW
 !
 !***  Begin debugging
       REAL :: ZSL_DIAG
@@ -309,24 +329,25 @@
         NSPEC=NSPEC+1
       ENDIF
 
-      !bloss(2016-10): check for isotopic water vapor
-      flHDO = .FALSE.
-      IF (PRESENT(HDO_QV)) THEN
-         !bloss(2016-10): Assume that vapor is accompanied by other hydrometeors
-         flHDO = .TRUE.
-         NSPEC=NSPEC+1 !bloss(2016-10): water vapor
-         IDX_HDO_QV = NSPEC
-         NSPEC=NSPEC+1 !bloss(2016-10): cloud liquid
-         IF (flQI) NSPEC=NSPEC+1 !bloss(2016-10): cloud ice
-      END IF
+      IF(WISOTOPE) THEN
+        !bloss/wiso: set up HDO water vapor, cloud liquid and cloud ice
+        flHDO = .TRUE.
+        NSPEC=NSPEC+1 !bloss(2016-10): water vapor
+        IDX_HDO_QV = NSPEC
+        NSPEC=NSPEC+1 !bloss(2016-10): cloud liquid
+        IF (flQI) NSPEC=NSPEC+1 !bloss(2016-10): cloud ice
 
-      flO18 = .FALSE.
-      IF (PRESENT(O18_QV)) THEN
-         flO18 = .TRUE.
-         NSPEC=NSPEC+1 !bloss(2016-10): water vapor
-         IDX_O18_QV = NSPEC
-         NSPEC=NSPEC+1 !bloss(2016-10): cloud liquid
-         IF (flQI) NSPEC=NSPEC+1 !bloss(2016-10): cloud ice
+        !bloss/wiso: set up O18 water vapor, cloud liquid and cloud ice
+        flO18 = .TRUE.
+        NSPEC=NSPEC+1 !bloss(2016-10): water vapor
+        IDX_O18_QV = NSPEC
+        NSPEC=NSPEC+1 !bloss(2016-10): cloud liquid
+        IF (flQI) NSPEC=NSPEC+1 !bloss(2016-10): cloud ice
+
+      ELSE
+        ! No water isotopologues
+        flHDO = .FALSE.
+        flO18 = .FALSE.
       END IF
 
 !bloss(TODO): add isotopologues if these species are mixed by the pbl scheme.
@@ -625,6 +646,14 @@
           LLOW=LOWLYR(I,J)
           AKHS_DENS=AKHS(I,J)*RHOK(KTE+1-LLOW,I)
 !
+          ! get lowest-level specific humidites of QV (and possibly HDO/H218O)
+          QLOW=QK(KTE+1-LLOW)
+          IF(WISOTOPE) THEN
+            HDO_QLOW=SPECIES(IDX_HDO_QV,KTE+1-LLOW) !bloss/wiso
+            O18_QLOW=SPECIES(IDX_O18_QV,KTE+1-LLOW) !bloss/wiso
+          ENDIF
+
+
           IF(SEAMASK<0.5)THEN
 !bloss/qfx: Use QFX, the evaporation mass flux from the surface, instead of the latent heat 
 !    flux (ELFLX) so that we do not need to normalize by the latent heat, which depends on
@@ -633,8 +662,14 @@
             QFC1=CHKLOWQ(I,J)*AKHS_DENS
 !
             IF(QFC1>0.)THEN
-              QLOW=QK(KTE+1-LLOW)
-              QSFC(I,J)=QLOW+QFX(I,J)/QFC1
+              ! add flux to surface value, which provides lower boundary condition in PBL scheme
+              QSFC(I,J)=QLOW+QFX(I,J)/QFC1 !bloss/qfx
+
+              IF(WISOTOPE) THEN
+                ! same for isotopologues.
+                HDO_QSFC(I,J)=HDO_QLOW+HDO_QFX(I,J)/QFC1 !bloss/wiso
+                O18_QSFC(I,J)=O18_QLOW+O18_QFX(I,J)/QFC1 !bloss/wiso
+              ENDIF
             ENDIF
 !bloss/qfx            QFC1=XLV*CHKLOWQ(I,J)*AKHS_DENS
 !bloss/qfx!
@@ -648,10 +683,13 @@
 !bloss/qfx            ENDIF
 !
           ELSE
+
 !bloss/qfx (NOTE, 2017-09): The above treatment for land/ice points enforces the surface flux
 !  to be that computed in the surface flux scheme.  However, for ocean points, the
 !  boundary condition is dirichlet (a fixed value of QVAPOR) and equal to the 
-!  saturation specific humidity at the surface.  As a result, the surface flux over
+!  QZ0, which comes in as an argument after being computed in module_sf_myjsfc.F.  The QSFC
+!  defined below for ocean points seems to not be used here, but rather is used to update QZ0 
+!  in the next call to module_sf_myjsfc. Note that the surface flux over
 !  ocean points will not be equal to the QFX computed in the surface scheme and output
 !  in the wrfout netcdf file.  This will complicate efforts to contrain the mass budget
 !  for moisture.  It is possible to back out the actual evaporation flux using the 
@@ -661,27 +699,40 @@
             EXNSFC=(1.E5/PSFC)**CAPA
             QSFC(I,J)=PQ0SEA/PSFC                                      &
      &         *EXP(A2*(THSK(I,J)-A3*EXNSFC)/(THSK(I,J)-A4*EXNSFC))
+!
           ENDIF
 !
           QZ0 (I,J)=(1.-SEAMASK)*QSFC(I,J)+SEAMASK*QZ0 (I,J)
+          
+          IF(WISOTOPE) THEN
+            HDO_QZ0 (I,J)=(1.-SEAMASK)*HDO_QSFC(I,J)+SEAMASK*HDO_QZ0(I,J)
+            O18_QZ0 (I,J)=(1.-SEAMASK)*O18_QSFC(I,J)+SEAMASK*O18_QZ0(I,J)
+          END IF
 !
 ! BSF: Begin
+!bloss: Initialize arguments to zero for all species         
+          SZ0(:) = 0. ! bottom boundary condition
+          CLOW(:)=0. ! ==1 if bottom boundary condition should be applied
+          CTS(:)=0. ! allows extra (countergradient??) flux to be passed in.  (Not used now, I think.)
+
+!bloss: BCs for theta (index 1 in SPECIES array)
           SZ0(1)=THZ0(I,J)
-          SZ0(2)=QZ0 (I,J)
-          DO NUMS=3,NSPECE
-            SZ0(NUMS)=0.
-          ENDDO
-!
           CLOW(1)=1.
-          CLOW(2)=CHKLOWQ(I,J)
-          DO NUMS=3,NSPECE
-            CLOW(NUMS)=0.
-          ENDDO
-!
           CTS(1)=CT(I,J)
-          DO NUMS=2,NSPECE
-            CTS(NUMS)=0.
-          ENDDO
+
+!bloss: BCs for water vapor
+          SZ0(2)=QZ0 (I,J)
+          CLOW(2)=CHKLOWQ(I,J)
+
+          IF(WISOTOPE) THEN
+            !bloss: BCs for HDO water isotopologue
+            SZ0(IDX_HDO_QV) = HDO_QZ0(I,J)
+            CLOW(IDX_HDO_QV) = CHKLOWQ(I,J)
+
+            !bloss: BCs for O18 water isotopologue
+            SZ0(IDX_O18_QV) = O18_QZ0(I,J)
+            CLOW(IDX_O18_QV) = CHKLOWQ(I,J)
+          END IF
 ! BSF: End
 !
 !***  LOWEST LAYER ABOVE GROUND MUST BE FLIPPED
