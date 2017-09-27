@@ -9,6 +9,10 @@
       USE MODULE_DM, ONLY : WRF_DM_MAXVAL
 #endif
 !
+!bloss/wiso: Needed for isotopic surface fluxes   
+   USE module_mp_water_isotopologues, only: &
+        alfaW_equilibrium, kfac_surf_HDO, kfac_surf_O18, fractionate
+!
 !----------------------------------------------------------------------
 !
 ! REFERENCES:  Janjic (2002), NCEP Office Note 437
@@ -74,6 +78,9 @@ CONTAINS
      &                 ,QGH,CPM,CT                                     &
      &                 ,U10,V10,T02,TH02,TSHLTR,TH10,Q02,QSHLTR,Q10,PSHLTR          &
      &                 ,P1000mb                                        &
+     &                 ,HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF     & !bloss/wiso
+     &                 ,O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF     & !bloss/wiso
+     &                 ,WISOTOPE                                       & !bloss/wiso
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
      &                 ,ITS,ITE,JTS,JTE,KTS,KTE)
@@ -120,6 +127,15 @@ CONTAINS
      &                                              ,QGH
 !
       REAL,INTENT(IN) :: P1000mb
+!
+!bloss/wiso: variables for implementation of isotopic surface fluxes
+      REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(IN),OPTIONAL :: HDO_QV, O18_QV !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_SURF, R_O18_SURF !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT),OPTIONAL :: HDO_QFX, O18_QFX !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT),OPTIONAL :: HDO_QZ0, O18_QZ0 !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT),OPTIONAL :: HDO_QSFC, O18_QSFC !bloss/wiso
+      LOGICAL, INTENT(IN), OPTIONAL :: WISOTOPE !bloss/wiso
+
 !----------------------------------------------------------------------
 !***
 !***  LOCAL VARIABLES
@@ -133,6 +149,7 @@ CONTAINS
      &       ,RAPA,RAPA02,RAPA10,RATIOMX,RDZ,SEAMASK,SM                &
      &       ,T02P,T10P,TEM,TH02P,TH10P,THLOW,THELOW,THM               &
      &       ,TLOW,TZ0,ULOW,VLOW,ZSL
+      REAL :: QSFC_OUT !bloss/wiso
 !
       REAL,DIMENSION(KTS:KTE) :: CWMK,PK,Q2K,QK,THEK,THK,TK,UK,VK
 !
@@ -143,6 +160,10 @@ CONTAINS
       REAL,DIMENSION(ITS:ITE,JTS:JTE) :: THSK
 !
       REAL,DIMENSION(ITS:ITE,KTS:KTE+1,JTS:JTE) :: ZINT
+!
+!bloss/wiso
+      INTEGER :: KMH ! - index of lowest level in original QV array
+      REAL :: HDO_QLOW, O18_QLOW, kfac_HDO, kfac_O18, Z0fac, QSFC_SPEC_HUM
 !
 !----------------------------------------------------------------------
 !**********************************************************************
@@ -303,6 +324,7 @@ CONTAINS
           TZ0=THZ0(I,J)*APESFC
        endif
 !
+!
           CALL SFCDIF(NTSD,SEAMASK,THSK(I,J),QSFC(I,J),PSFC            &
      &               ,UZ0(I,J),VZ0(I,J),TZ0,TSK(I,J),THZ0(I,J),QZ0(I,J)         &
      &               ,USTAR(I,J),ZNT(I,J),Z0BASE(I,J),CT(I,J),RMOL(I,J) &
@@ -315,6 +337,7 @@ CONTAINS
      &               ,ZSL,PLOW                                         &
      &               ,U10(I,J),V10(I,J),TSHLTR(I,J),TH10(I,J)          &
      &               ,QSHLTR(I,J),Q10(I,J),PSHLTR(I,J)                 &
+     &               ,QSFC_OUT                                         & !bloss/wiso
      &               ,IDS,IDE,JDS,JDE,KDS,KDE                          &
      &               ,IMS,IME,JMS,JME,KMS,KME                          &
      &               ,ITS,ITE,JTS,JTE,KTS,KTE,i,j,ZHK(LMH+1))
@@ -345,6 +368,84 @@ CONTAINS
           IF(QSHLTR(I,J)>QS02)QSHLTR(I,J)=QS02
           IF(Q10   (I,J)>QS10)Q10   (I,J)=QS10
           Q02(I,J)=QSHLTR(I,J)/(1.-QSHLTR(I,J))
+!
+!bloss/wiso...begin
+          IF(WISOTOPE) THEN
+            ! compute equivalent values for QFX, QZ0 and QSFC for 
+            !   water isotopologues HDO and H_2^18O
+            KMH = LOWLYR(I,J)
+            HDO_QLOW = HDO_QV(I,KMH,J) / ( 1. + QV(I,KMH,J) ) ! specific humidity
+            O18_QLOW = O18_QV(I,KMH,J) / ( 1. + QV(I,KMH,J) ) ! specific humidity
+
+            IF(SEAMASK.GT.0.5) THEN
+              ! ocean
+              HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J) / alfaW_equilibrium( TSK(I,J), 19 )
+              O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J) / alfaW_equilibrium( TSK(I,J), 20 )
+              
+              IF(.NOT.fractionate) THEN
+                !bloss/wiso: Turn off equilibrium fractionation in testing runs w/o fractionation
+                HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J)
+                O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J)
+              END IF
+
+              ! Express QZ0 as a linear combination of QSFC and QLOW,
+              !   i.e., QZ0 = QLOW + Z0fac * (QSFC - QLOW)
+              IF(QSFC(I,J).EQ.QLOW) THEN
+                Z0fac = 1. ! Assume QZ0 takes on the surface value in this (unlikely) situation
+              ELSE
+                Z0fac = ( QZ0(I,J) - QLOW ) / ( QSFC(I,J) - QLOW )
+              END IF
+
+            ELSE
+              ! land:  First, QZ0==QSFC, so Z0fac = 1.
+              Z0fac = 1.
+
+              ! Second, we do not have an isotope-enabled land
+              !   scheme at this point, so let us assume a fixed, user-specific isotopic
+              !   content for land waters.
+              HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J)
+              O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J)
+
+            END IF !IF(SEAMASK>0.5)
+
+            !bloss/wiso: For simplicity, assume fixed (wind-speed-independent) values for
+            !  the kinetic fractionation of the surface fluxes, following Pfahl & Wernli (2009, sec. 5)
+            kfac_HDO = kfac_surf_HDO
+            kfac_O18 = kfac_surf_O18
+
+            !bloss/wiso: Turn off kinetic fractionation in testing runs without fractionation
+            IF(.NOT.fractionate) THEN
+              kfac_HDO = 1.
+              kfac_O18 = 1.
+            END IF
+
+            !   Set HDO_QZ0 as the same linear combination of HDO_QSFC and HDO_QLOW, except 
+            !   that we also include a factor for kinetic fractionation (e.g., kfac_HDO)
+            !   to include the effects of the lower diffusivities of the heavy isotopes of water:
+            !   HDO_QZ0 = HDO_QLOW + kfac_HDO * Z0fac * (HDO_QSFC - HDO_QLOW)
+            
+            HDO_QZ0(I,J) = HDO_QLOW + kfac_HDO * Z0fac * ( HDO_QSFC(I,J) - HDO_QLOW )
+            O18_QZ0(I,J) = O18_QLOW + kfac_O18 * Z0fac * ( O18_QSFC(I,J) - O18_QLOW )
+
+            !  Now, compute the implied isotopic surface fluxes using the 
+            !    same surface transfer coefficient (FLQC) used for QFX
+            HDO_QFX(I,J) = FLQC(I,J) * ( HDO_QZ0(I,J) - HDO_QLOW )
+            O18_QFX(I,J) = FLQC(I,J) * ( O18_QZ0(I,J) - O18_QLOW )
+
+
+          END IF !IF(wisotope)
+
+          !bloss/wiso: Now, set QSFC to the intended output value from SFCDIF().
+          !  This will be updated for SEAMASK>0.5.
+          QSFC(I,J) = QSFC_OUT
+
+          IF(wisotope) THEN
+            !  Update qsfc in case it changed inside SFCDIF (as it would for SEAMASK>0.5)
+            HDO_QSFC(I,J) = HDO_QSFC(I,J)*QSFC_OUT/QSFC(I,J)
+            O18_QSFC(I,J) = O18_QSFC(I,J)*QSFC_OUT/QSFC(I,J)
+          END IF
+!bloss/wiso...end
+
 !----------------------------------------------------------------------
 !
         ENDDO
@@ -364,6 +465,7 @@ CONTAINS
      &                 ,ULOW,VLOW,TLOW,THLOW,THELOW,QLOW,CWMLOW        &
      &                 ,ZSL,PLOW                                       &
      &                 ,U10,V10,TH02,TH10,Q02,Q10,PSHLTR               &
+     &                 ,QS_OUT                                         & !bloss/wiso
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
      &                 ,ITS,ITE,JTS,JTE,KTS,KTE,i,j,ZSFC)
@@ -393,6 +495,9 @@ CONTAINS
      &                   ,TH02,TH10,U10,V10
 !
       REAL,INTENT(INOUT) :: AKHS,AKMS,QZ0,THZ0,USTAR,UZ0,VZ0,Z0,QS
+!
+!bloss/wiso: 
+      REAL,INTENT(OUT) :: QS_OUT
 !----------------------------------------------------------------------
 !***
 !***  LOCAL VARIABLES
@@ -1043,10 +1148,14 @@ CONTAINS
 !***  AS A DIAGNOSTIC OVER WATER SINCE IT WILL CAUSE NO
 !***  INTERFERENCE BEFORE BEING RECOMPUTED IN MYJPBL.
 !
+      QS_OUT = QS
       IF(SEAMASK>0.5)THEN
-          QS=PQ0SEA/PSFC                                      &
+        !bloss/wiso: Do not reset QS for ocean surfaces until after
+        !  computing isotopic fluxes.  This is important for the consistency
+        !  of the water isotopologues and standard water.
+          QS_OUT=PQ0SEA/PSFC                                      &
      &         *EXP(A2S*(TSK-A3S)/(TSK-A4S)) 
-        QS=QS/(1.-QS)
+        QS_OUT=QS_OUT/(1.-QS_OUT)
       ENDIF
 !----------------------------------------------------------------------
 !
