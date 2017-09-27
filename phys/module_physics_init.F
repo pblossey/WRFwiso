@@ -3802,12 +3802,21 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
 !..Begin addition (bloss/wiso)
      CASE (THOMPISO)
          IF(start_of_simulation.or.restart.or.config_flags%cycling) THEN
-           ! bloss/wiso: This flag ensures consistent treatment of water vapor
-           !  and its isotopic variants (HDO, H218O) at the boundaries.
-            config_flags%wisotope = .true. 
 
+           !bloss/wiso(2017-09): In order for isotopes to work throughout the
+           !  code, I am relying on a logical flag, config_flags%wisotope
+           !  which needs to be set to true in the physics namelist.
+           !  If the user has chosen the isotope-enabled Thompson microphysics 
+           !  and this flag is false, stop the run and tell the used to 
+           !  fix the flag.
+           IF(.NOT.config_flags%wisotope) THEN
+             CALL wrf_message(' ERROR:  If running with water isotopes, set wisotope to true in the physics namelist')
+             CALL wrf_error_fatal(' Stopping simulation because wisotope=F and isotope-enabled Thompson microphysics was selected.')
+           END IF
+           
            CALL thompiso_init !bloss: Note that Thompson version from 3.5.1 has simpler interface.
                                  !  Need to update this later when merging isotopes into 3.9 Thompson scheme.
+
          END IF
 !..End addition (bloss/wiso)
 
