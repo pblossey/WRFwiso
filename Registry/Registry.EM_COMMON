@@ -158,6 +158,8 @@ state    real   dhdov_gc       igj      dyn_em      1        Z     i1  "DHDOV"  
 state    real   do18v_gc       igj      dyn_em      1        Z     i1  "DO18V"   "deltaO18 of water vapor"   "per mil"
 state    real   dhdosurf_gc    ij       dyn_em      1        -     i1  "DHDOSURF"   "deltaD of surface waters"   "per mil"
 state    real   do18surf_gc    ij       dyn_em      1        -     i1  "DO18SURF"   "deltaO18 of surface waters"   "per mil"
+state    real   dhdoqfx_gc    ij       dyn_em      1        -     i1  "DHDOQFX"   "Prescribed deltaD of surface moisture flux from land and sea ice"   "per mil"
+state    real   do18qfx_gc    ij       dyn_em      1        -     i1  "DO18QFX"   "Prescribed deltaO18 of surface moisture flux from land and sea ice"   "per mil"
 
 #End: bloss/wiso
 
@@ -2790,6 +2792,7 @@ package   radar_refl      compute_radar_ref==1         -             state:refl_
 
 #..Begin addition (bloss/wiso)
 package   thompiso      mp_physics==108               -             moist:qv,qc,qr,qi,qs,qg;scalar:hdo_qv,hdo_qc,hdo_qr,hdo_qi,hdo_qs,hdo_qg,o18_qv,o18_qc,o18_qr,o18_qi,o18_qs,o18_qg,qni,qnr;state:re_cloud,re_ice,re_snow
+package   thompisodiag  mp_physics==208               -             moist:qv,qc,qr,qi,qs,qg;scalar:hdo_qv,hdo_qc,hdo_qr,hdo_qi,hdo_qs,hdo_qg,o18_qv,o18_qc,o18_qr,o18_qi,o18_qs,o18_qg,qni,qnr;state:re_cloud,re_ice,re_snow,qliq_auto,qliq_coll,qice_auto,qice_coll,qice_rim,qvap_cld,qpcp_sed,qpcp_dep,qpcp_sub,qpcp_revp,hdo_liq_auto,hdo_liq_coll,hdo_ice_auto,hdo_ice_coll,hdo_ice_rim,hdo_vap_cld,hdo_pcp_sed,hdo_pcp_dep,hdo_pcp_sub,hdo_pcp_revp,o18_liq_auto,o18_liq_coll,o18_ice_auto,o18_ice_coll,o18_ice_rim,o18_vap_cld,o18_pcp_sed,o18_pcp_dep,o18_pcp_sub,o18_pcp_revp
 #..End addition (bloss/wiso)
 
 endif
@@ -2868,7 +2871,7 @@ package   ssibscheme     sf_surface_physics==8       -             state:ssib_fm
 package   noahmosaicscheme  sf_surface_mosaic==1         -        state:TSK_mosaic,QSFC_mosaic,TSLB_mosaic,SMOIS_mosaic,SH2O_mosaic,CANWAT_mosaic,SNOW_mosaic,SNOWH_mosaic,SNOWC_mosaic,ALBEDO_mosaic,ALBBCK_mosaic,EMISS_mosaic,EMBCK_mosaic,ZNT_mosaic,Z0_mosaic,HFX_mosaic,QFX_mosaic,LH_mosaic,GRDFLX_mosaic,SNOTIME_mosaic,TR_URB2D_mosaic,TB_URB2D_mosaic,TG_URB2D_mosaic,TC_URB2D_mosaic,TS_URB2D_mosaic,TS_RUL2D_mosaic,QC_URB2D_mosaic,UC_URB2D_mosaic,TRL_URB3D_mosaic,TBL_URB3D_mosaic,TGL_URB3D_mosaic,SH_URB2D_mosaic,LH_URB2D_mosaic,G_URB2D_mosaic,RN_URB2D_mosaic,mosaic_cat_index,landusef2,smcrel
 
 package   ysuscheme      bl_pbl_physics==1           -             -
-package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl,el_pbl
+package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl,el_pbl,rhdo_qvblten,rhdo_qcblten,rhdo_qiblten,ro18_qvblten,ro18_qcblten,ro18_qiblten
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
 package   mynnpblscheme2 bl_pbl_physics==5           -             scalar:qke_adv;state:qke,tke_pbl,sh3d,tsq,qsq,cov,el_pbl
@@ -2880,6 +2883,7 @@ package   temfpblscheme  bl_pbl_physics==10          -             state:te_temf
 package   shinhongscheme bl_pbl_physics==11          -             state:el_pbl,tke_pbl
 package   gbmpblscheme   bl_pbl_physics==12          -             state:exch_tke,el_pbl,tke_pbl
 package   mrfscheme      bl_pbl_physics==99          -             -
+package   myjpblschemeiso bl_pbl_physics==102        -             state:tke_pbl,el_pbl,rhdo_qvblten,rhdo_qcblten,rhdo_qiblten,ro18_qvblten,ro18_qcblten,ro18_qiblten
 
 package   mynn_tkebudget bl_mynn_tkebudget==1        -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
 package   mynn_stem_edmf bl_mynn_edmf==1            -              state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc
