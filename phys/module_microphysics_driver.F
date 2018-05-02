@@ -132,7 +132,7 @@ SUBROUTINE microphysics_driver(                                          &
                     ,GSFCGCESCHEME, WDM5SCHEME, WDM6SCHEME, NSSL_2MOM, NSSL_2MOMCCN, NSSL_2MOMG  &
                     ,NSSL_1MOM,NSSL_1MOMLFO, FER_MP_HIRES_ADVECT & ! ,NSSL_3MOM       &
                     ,MILBRANDT2MOM , CAMMGMPSCHEME,FULL_KHAIN_LYNN, P3_1CATEGORY, P3_1CATEGORY_NC & !,MILBRANDT3MOM
-                    ,THOMPISO !bloss/wiso
+                    ,THOMPISO,THOMPISODIAG !bloss/wiso
 #endif
 
 #ifdef DM_PARALLEL
@@ -906,22 +906,95 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  qi_b4mp(its:ite,kts:kte,jts:jte) = qi_curr(its:ite,kts:kte,jts:jte)
                  qs_b4mp(its:ite,kts:kte,jts:jte) = qs_curr(its:ite,kts:kte,jts:jte)
 #endif
-                 IF ( PRESENT( QLIQ_AUTO ) .AND. PRESENT ( QLIQ_COLL ) .AND.  &
-                      PRESENT( QICE_AUTO ) .AND. PRESENT ( QICE_COLL ) .AND.  &
-                      PRESENT( QICE_RIM ) .AND. PRESENT ( QPCP_DEP ) .AND.  &
-                      PRESENT( QPCP_SUB ) .AND. PRESENT ( QPCP_REVP ) .AND.  & !bloss(dep/sub/revp)
-                      PRESENT( QVAP_CLD ) .AND. PRESENT ( QPCP_SED ) .AND.  &
-                      PRESENT( HDO_LIQ_AUTO ) .AND. PRESENT ( HDO_LIQ_COLL ) .AND.  &
-                      PRESENT( HDO_ICE_AUTO ) .AND. PRESENT ( HDO_ICE_COLL ) .AND.  &
-                      PRESENT( HDO_ICE_RIM ) .AND. PRESENT ( HDO_PCP_DEP ) .AND.  &
-                      PRESENT( HDO_PCP_SUB ) .AND. PRESENT ( HDO_PCP_REVP ) .AND.  & !bloss(dep/sub/revp)
-                      PRESENT( HDO_VAP_CLD ) .AND. PRESENT ( HDO_PCP_SED ) .AND.  &
-                      PRESENT( O18_LIQ_AUTO ) .AND. PRESENT ( O18_LIQ_COLL ) .AND.  &
-                      PRESENT( O18_ICE_AUTO ) .AND. PRESENT ( O18_ICE_COLL ) .AND.  &
-                      PRESENT( o18_ICE_RIM ) .AND. PRESENT ( o18_PCP_DEP ) .AND.  &
-                      PRESENT( O18_PCP_SUB ) .AND. PRESENT ( O18_PCP_REVP ) .AND.  & !bloss(dep/sub/revp)
-                      PRESENT( o18_VAP_CLD ) .AND. PRESENT ( o18_PCP_SED ) ) THEN
+                   CALL mp_gt_driver_iso(                      &
+                        QV=qv_curr,                         &
+                        QC=qc_curr,                         &
+                        QR=qr_curr,                         &
+                        QI=qi_curr,                         &
+                        QS=qs_curr,                         &
+                        QG=qg_curr,                         &
+                        HDO_QV=hdo_qv,                         &
+                        HDO_QC=hdo_qc,                         &
+                        HDO_QR=hdo_qr,                         &
+                        HDO_QI=hdo_qi,                         &
+                        HDO_QS=hdo_qs,                         &
+                        HDO_QG=hdo_qg,                         &
+                        O18_QV=o18_qv,                         &
+                        O18_QC=o18_qc,                         &
+                        O18_QR=o18_qr,                         &
+                        O18_QI=o18_qi,                         &
+                        O18_QS=o18_qs,                         &
+                        O18_QG=o18_qg,                         &
+                        NI=qni_curr,                        &
+                        NR=qnr_curr,                        &
+                        TH=th,                              &
+                        PII=pi_phy,                         &
+                        P=p,                                &
+                        DZ=dz8w,                            &
+                        DT_IN=dt,                           &
+                        ITIMESTEP=itimestep,                &
+                        RAINNC=RAINNC,                      &
+                        RAINNCV=RAINNCV,                    &
+                        SNOWNC=SNOWNC,                      &
+                        SNOWNCV=SNOWNCV,                    &
+                        GRAUPELNC=GRAUPELNC,                &
+                        GRAUPELNCV=GRAUPELNCV,              &
+                        SR=SR,                              &
+                        HDO_RAINNC=HDO_RAINNC,                      & !HDO PRECIPITATION
+                        HDO_RAINNCV=HDO_RAINNCV,                    &
+                        HDO_SNOWNC=HDO_SNOWNC,                      &
+                        HDO_SNOWNCV=HDO_SNOWNCV,                    &
+                        HDO_GRAUPELNC=HDO_GRAUPELNC,                &
+                        HDO_GRAUPELNCV=HDO_GRAUPELNCV,              &
+                        O18_RAINNC=O18_RAINNC,                      & !O18 PRECIPITATION
+                        O18_RAINNCV=O18_RAINNCV,                    &
+                        O18_SNOWNC=O18_SNOWNC,                      &
+                        O18_SNOWNCV=O18_SNOWNCV,                    &
+                        O18_GRAUPELNC=O18_GRAUPELNC,                &
+                        O18_GRAUPELNCV=O18_GRAUPELNCV,              &
+#ifdef WRF_CHEM
+                        RAINPROD=rainprod,                  &
+                        EVAPPROD=evapprod,                  &
+#endif
+                        REFL_10CM=refl_10cm,                &
+                        diagflag=diagflag,                  &
+                        do_radar_ref=do_radar_ref,          &
+                        re_cloud=re_cloud,                  & ! G. Thompson
+                        re_ice=re_ice,                      & ! G. Thompson
+                        re_snow=re_snow,                    & ! G. Thompson
+                        has_reqc=has_reqc,                  & ! G. Thompson
+                        has_reqi=has_reqi,                  & ! G. Thompson
+                        has_reqs=has_reqs,                  & ! G. Thompson
+                        IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
+                        IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
+                        ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
+               ELSE
+                 CALL wrf_error_fatal ( 'arguments not present for calling isotope-enabled thompson' )
+               ENDIF
+               !
 
+!
+        CASE (THOMPISODIAG)
+             CALL wrf_debug ( 100 , 'microphysics_driver: calling isotope-enabled thompson with extra process diagnostics' )
+             IF ( PRESENT( QV_CURR ) .AND. PRESENT ( QC_CURR ) .AND.  &
+                  PRESENT( QR_CURR ) .AND. PRESENT ( QI_CURR ) .AND.  &
+                  PRESENT( QS_CURR ) .AND. PRESENT ( QG_CURR ) .AND.  &
+                  PRESENT( HDO_QV ) .AND. PRESENT ( HDO_QC ) .AND.  &
+                  PRESENT( HDO_QR ) .AND. PRESENT ( HDO_QI ) .AND.  &
+                  PRESENT( HDO_QS ) .AND. PRESENT ( HDO_QG ) .AND.  &
+                  PRESENT( O18_QV ) .AND. PRESENT ( O18_QC ) .AND.  &
+                  PRESENT( O18_QR ) .AND. PRESENT ( O18_QI ) .AND.  &
+                  PRESENT( O18_QS ) .AND. PRESENT ( O18_QG ) .AND.  &
+                  PRESENT( QNR_CURR) .AND. PRESENT ( QNI_CURR) .AND.  &
+                  PRESENT( RAINNC  ) .AND. PRESENT ( RAINNCV ) .AND.  &
+                  PRESENT( HDO_RAINNC  ) .AND. PRESENT ( HDO_RAINNCV ) .AND.  &
+                  PRESENT( O18_RAINNC  ) .AND. PRESENT ( O18_RAINNCV ) ) THEN
+#ifdef WRF_CHEM
+                 qv_b4mp(its:ite,kts:kte,jts:jte) = qv_curr(its:ite,kts:kte,jts:jte)
+                 qc_b4mp(its:ite,kts:kte,jts:jte) = qc_curr(its:ite,kts:kte,jts:jte)
+                 qi_b4mp(its:ite,kts:kte,jts:jte) = qi_curr(its:ite,kts:kte,jts:jte)
+                 qs_b4mp(its:ite,kts:kte,jts:jte) = qs_curr(its:ite,kts:kte,jts:jte)
+#endif
                    CALL mp_gt_driver_iso(                      &
                         QV=qv_curr,                         &
                         QC=qc_curr,                         &
@@ -1014,70 +1087,6 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                         IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
                         IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
                         ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
-                 ELSE
-                   CALL mp_gt_driver_iso(                      &
-                        QV=qv_curr,                         &
-                        QC=qc_curr,                         &
-                        QR=qr_curr,                         &
-                        QI=qi_curr,                         &
-                        QS=qs_curr,                         &
-                        QG=qg_curr,                         &
-                        HDO_QV=hdo_qv,                         &
-                        HDO_QC=hdo_qc,                         &
-                        HDO_QR=hdo_qr,                         &
-                        HDO_QI=hdo_qi,                         &
-                        HDO_QS=hdo_qs,                         &
-                        HDO_QG=hdo_qg,                         &
-                        O18_QV=o18_qv,                         &
-                        O18_QC=o18_qc,                         &
-                        O18_QR=o18_qr,                         &
-                        O18_QI=o18_qi,                         &
-                        O18_QS=o18_qs,                         &
-                        O18_QG=o18_qg,                         &
-                        NI=qni_curr,                        &
-                        NR=qnr_curr,                        &
-                        TH=th,                              &
-                        PII=pi_phy,                         &
-                        P=p,                                &
-                        DZ=dz8w,                            &
-                        DT_IN=dt,                           &
-                        ITIMESTEP=itimestep,                &
-                        RAINNC=RAINNC,                      &
-                        RAINNCV=RAINNCV,                    &
-                        SNOWNC=SNOWNC,                      &
-                        SNOWNCV=SNOWNCV,                    &
-                        GRAUPELNC=GRAUPELNC,                &
-                        GRAUPELNCV=GRAUPELNCV,              &
-                        SR=SR,                              &
-                        HDO_RAINNC=HDO_RAINNC,                      & !HDO PRECIPITATION
-                        HDO_RAINNCV=HDO_RAINNCV,                    &
-                        HDO_SNOWNC=HDO_SNOWNC,                      &
-                        HDO_SNOWNCV=HDO_SNOWNCV,                    &
-                        HDO_GRAUPELNC=HDO_GRAUPELNC,                &
-                        HDO_GRAUPELNCV=HDO_GRAUPELNCV,              &
-                        O18_RAINNC=O18_RAINNC,                      & !O18 PRECIPITATION
-                        O18_RAINNCV=O18_RAINNCV,                    &
-                        O18_SNOWNC=O18_SNOWNC,                      &
-                        O18_SNOWNCV=O18_SNOWNCV,                    &
-                        O18_GRAUPELNC=O18_GRAUPELNC,                &
-                        O18_GRAUPELNCV=O18_GRAUPELNCV,              &
-#ifdef WRF_CHEM
-                        RAINPROD=rainprod,                  &
-                        EVAPPROD=evapprod,                  &
-#endif
-                        REFL_10CM=refl_10cm,                &
-                        diagflag=diagflag,                  &
-                        do_radar_ref=do_radar_ref,          &
-                        re_cloud=re_cloud,                  & ! G. Thompson
-                        re_ice=re_ice,                      & ! G. Thompson
-                        re_snow=re_snow,                    & ! G. Thompson
-                        has_reqc=has_reqc,                  & ! G. Thompson
-                        has_reqi=has_reqi,                  & ! G. Thompson
-                        has_reqs=has_reqs,                  & ! G. Thompson
-                        IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde, &
-                        IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme, &
-                        ITS=its,ITE=ite, JTS=jts,JTE=jte, KTS=kts,KTE=kte)
-                 END IF
                ELSE
                  CALL wrf_error_fatal ( 'arguments not present for calling isotope-enabled thompson' )
                ENDIF
