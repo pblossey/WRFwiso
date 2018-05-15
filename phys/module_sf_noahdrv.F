@@ -1,4 +1,7 @@
 MODULE module_sf_noahdrv
+!!!#define BPRC_MODS
+!!!#define BPRC_EXTREME_CHECK
+!!#define ICEZO_SMALL
 
 !-------------------------------
   USE module_sf_noahlsm,  only: SFLX, XLF, XLV, CP, R_D, RHOWATER, NATURAL, SHDTBL, LUTYPE, SLTYPE, STBOLT, &
@@ -228,6 +231,13 @@ CONTAINS
 !-- kte         end index for k in tile
 !
 !-- SR          fraction of frozen precip (0.0 to 1.0)
+!!#ifdef BPRC_MODS
+!-- XICE_THRESHOLD minimum sea ice concentration for Noah (usually 0.02 or 0.5)
+!-- SEAICE_THICKNESS  index for use of variable sea ice thickness (0 or 1)
+!-- ICEDEPTH      sea ice thickness (m)
+!-- SNOWSI      snow depth on sea ice (m)
+!-- ALBSI       input albedo of sea ice (fraction)
+!!#endif
 !----------------------------------------------------------------
 
 ! IN only
@@ -772,6 +782,24 @@ CONTAINS
 ! snow depth in meters
         SNOWHK=SNOWH(I,J)
         SNCOVR=SNOWC(I,J)
+!
+#ifdef BPRC_EXTREME_CHECK
+!
+! find errors early
+!
+        if ( PSFC .lt. 40000. ) then
+          write(6,*)'error at I,J ',I,J,' T1 = ',T1,PSFC,CHK,SFCTMP
+          CALL wrf_error_fatal('Noah sfc pressure too small')
+        endif
+        if ( PSFC .gt. 110000. ) then
+          write(6,*)'error at I,J ',I,J,' T1 = ',T1,PSFC,CHK,SFCTMP
+          CALL wrf_error_fatal('Noah sfc pressure too big')
+        endif
+        if ( PSFC .gt. 40000. .and. PSFC .lt. 110000.) go to 7759
+          write(6,*)'error at I,J ',I,J,' T1 = ',T1,PSFC,CHK,SFCTMP
+          CALL wrf_error_fatal('Noah sfc pressure error')
+ 7759   continue
+#endif
 
 ! if "SR" present, set frac of frozen precip ("FFROZP") = snow-ratio ("SR", range:0-1)
 ! SR from e.g. Ferrier microphysics
@@ -871,6 +899,18 @@ CONTAINS
             SMC(NS)=SMOIS(I,NS,J)
             STC(NS)=TSLB(I,NS,J)                                          !STEMP
             SWC(NS)=SH2O(I,NS,J)
+
+#ifdef BPRC_EXTREME_CHECK
+            if (STC(NS) .gt. 150. .and. STC(NS) .lt. 350.) go to 8757
+              write(6,*)'soil T error at I,J,NS ',I,J,NS,' STC = ',STC
+              CALL wrf_error_fatal('Noah soil temperature error')
+ 8757       continue
+            if (SMC(NS) .ge. 0. .and. SWC(NS) .ge. 0.) go to 8755
+        write(6,*)'soil dry error at I,J,NS ',I,J,NS,' SMC,SWC = ',SMC,SWC
+              CALL wrf_error_fatal('Noah soil moisture error')
+ 8755       continue
+#endif
+
           ENDDO
 !
           if ( (SNEQV.ne.0..AND.SNOWHK.eq.0.).or.(SNOWHK.le.SNEQV) )THEN
@@ -1004,6 +1044,7 @@ CONTAINS
 !
 !  END FASDAS
 !
+       DUMMY = 0.
        CALL SFLX (I,J,FFROZP, ISURBAN, DT,ZLVL,NSOIL,SLDPTH,       &    !C
                  LOCAL,                                            &    !L
                  LUTYPE, SLTYPE,                                   &    !CL
@@ -1110,6 +1151,14 @@ CONTAINS
            endif
 #endif
 
+#ifdef BPRC_EXTREME_CHECK
+         if ( ICE .ne. 0 .and. T1 .gt. 274. ) then
+           write(6,*)'warning sea/land ice warm at ',I,J,T1,ICE
+           write(6,*)'SSOIL,SHEAT,FDOWN,STC,LWDN,SOLDN,SFCTMP,TH2'
+           write(6,*)SSOIL,SHEAT,FDOWN,STC,LWDN,SOLDN,SFCTMP,TH2
+         endif
+#endif
+
 !***  UPDATE STATE VARIABLES
           CANWAT(I,J)=CMC
           SNOW(I,J)=SNEQV*1000.
@@ -1183,6 +1232,29 @@ CONTAINS
            SH2O(I,NS,J)=SWC(NS)
    80     CONTINUE
 !       ENDIF
+
+#ifdef BPRC_EXTREME_CHECK
+        if(T1.gt. 100. .and. T1.lt. 400.) go to 5750
+          write(6,*)'error at I,J, ',I,J,' T1 = ',T1
+          CALL wrf_error_fatal('Noah skin temperature error')
+ 5750   continue
+        if(SHEAT.gt. -2000. .and. SHEAT.lt. 2000.) go to 5752
+          write(6,*)'error at I,J, ',I,J,' T1,SHEAT = ',T1,SHEAT
+          CALL wrf_error_fatal('Noah sensible heat flux error')
+ 5752   continue
+        if(ETA.gt. -20000. .and. ETA.lt. 20000.) go to 5754
+          write(6,*)'error at I,J, ',I,J,' T1,ETA = ',T1,ETA
+          write(6,*)'T1,SHEAT,SSOIL,TH2,STC,SMC,SWC,EMISSI,ALBEDOK,ICE'
+          write(6,*)T1,SHEAT,SSOIL,TH2,STC,SMC,SWC,EMISSI,ALBEDOK,ICE
+          write(6,*)'SNOWHK,CMC,SFCPRS,LWDN,ETT,ETP,SOLDN,SFCTMP,VEGTYP'
+          write(6,*)SNOWHK,CMC,SFCPRS,LWDN,ETT,ETP,SOLDN,SFCTMP,VEGTYP
+          CALL wrf_error_fatal('Noah latent heat flux error')
+ 5754   continue
+        if(SSOIL.gt. -1800. .and. SSOIL.lt. 1800.) go to 5756
+          write(6,*)'error at I,J, ',I,J,' T1,SSOIL = ',T1,SSOIL
+          CALL wrf_error_fatal('Noah ground heat flux error')
+ 5756   continue
+#endif
 
         FLX4_2D(I,J)  = FLX4
 	FVB_2D(I,J)   = FVB
@@ -3141,7 +3213,20 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       !        SNOALB1=0.80
       !        SHMIN=0.00
               ALBBRD=ALBBCK(I,J)
+#ifdef ICEZO_SMALL
+!
+! kmh 2007/07/09 set land ice surface roughness to 0.0001 m (Polar MM5 value)
+!
+            IF ( ICE == -1 ) THEN
+              Z0BRD = 0.0001
+              Z0(I,J) = 0.0001
+              ZNT(I,J) = 0.0001
+            ELSE
               Z0BRD=Z0(I,J)
+            ENDIF
+#else
+              Z0BRD=Z0(I,J)
+#endif
               EMBRD=EMBCK(I,J)
               SNOTIME1 = SNOTIME(I,J)
               RIBB=RIB(I,J)
