@@ -405,33 +405,35 @@ USE module_io_domain
       END IF
     
 !..Begin addition (bloss/wiso): adding deltaHDO/deltaO18 vapor and surface water
+!bloss(2018-02): Change WPS variable names to be all caps.  This is consistent with
+!   what seems to be the standard for WPS.
 
-      flag_name(1:8) = 'dHDOV   '
+      flag_name(1:8) = 'DHDOV   '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_dhdov    = itmp
       END IF
-      flag_name(1:8) = 'dO18V   '
+      flag_name(1:8) = 'DO18V   '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_do18v    = itmp
       END IF
-      flag_name(1:8) = 'dHDOSURF'
+      flag_name(1:8) = 'DHDOSURF'
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_dhdosurf  = itmp
       END IF
-      flag_name(1:8) = 'dO18SURF'
+      flag_name(1:8) = 'DO18SURF'
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_do18surf  = itmp
       END IF
-      flag_name(1:8) = 'dHDOQFX '
+      flag_name(1:8) = 'DHDOQFX '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_dhdoqfx   = itmp
       END IF
-      flag_name(1:8) = 'dO18QFX '
+      flag_name(1:8) = 'DO18QFX '
       CALL wrf_get_dom_ti_integer ( fid, 'FLAG_' // flag_name, itmp, 1, icnt, ierr ) 
       IF ( ierr .EQ. 0 ) THEN
          flag_do18qfx   = itmp
