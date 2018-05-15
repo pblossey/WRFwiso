@@ -1461,6 +1461,8 @@
       DOUBLE PRECISION, DIMENSION(kts:kte):: prg_scw, prg_rfz, prg_gde, &
            prg_gcw, prg_rci, prg_rcs, prg_scr, &
            prg_rcg, prg_ihm
+      DOUBLE PRECISION, DIMENSION(kts:kte):: &
+           prw_iml !bloss: melting of cloud ice --> cloud liquid, kg/kg/s
       DOUBLE PRECISION, PARAMETER:: zeroD0 = 0.0d0
       REAL, DIMENSION(kts:kte):: temp, pres, qv
       REAL, DIMENSION(kts:kte):: rc, ri, rr, rs, rg, ni, nr
@@ -1519,6 +1521,8 @@
            iso_prg_scw, iso_prg_rfz, iso_prg_gde, & ! graupel processes
            iso_prg_gcw, iso_prg_rci, iso_prg_rcs, iso_prg_scr, &
            iso_prg_rcg, iso_prg_ihm
+      DOUBLE PRECISION, DIMENSION(kts:kte,niso):: &
+           iso_prw_iml !bloss: melting of cloud ice --> cloud liquid, kg/kg/s
       ! isotope ratios (e.g., isor_v = iso_qv/qv)
       REAL, DIMENSION(kts:kte,niso):: &
            isor_v, isor_c, isor_i, isor_r, isor_s, isor_g
@@ -1534,10 +1538,11 @@
            iso_qc_new, qcond, qvapor, iso_qtot, &
            iso_rate_max, diffu_heavy, &
            rv_rain_surface, Sliq_tilde, tabs_rain_surface, &
-           iso_qv_equil, iso_qr_equil
+           iso_qv_equil, iso_qr_equil, temp_withUpdate
       REAL, DIMENSION(niso) :: alpha_equil_liq, alpha_equil_rain, &
            alpha_equil_ice, iso_Sc3
-
+      REAL :: negative_water
+      LOGICAL, PARAMETER :: fractionate = .true.
 !+---+
       debug_flag = .false.
 !     if (ii.eq.315 .and. jj.eq.2) debug_flag = .true.
@@ -1618,6 +1623,7 @@
          prg_scr(k) = 0.
          prg_rcg(k) = 0.
          prg_ihm(k) = 0.
+         prw_iml(k) = 0.
       enddo
       do nn = 1,niso
         do k = kts, kte
@@ -1658,6 +1664,7 @@
           iso_prg_scr(k,nn) = 0.
           iso_prg_rcg(k,nn) = 0.
           iso_prg_ihm(k,nn) = 0.
+          iso_prw_iml(k,nn) = 0.
           isor_v(k,nn) = 0.
           isor_c(k,nn) = 0.
           isor_i(k,nn) = 0.
@@ -1670,7 +1677,84 @@
       do nn = 1,niso
         iso_Sc3(nn) = (Sc*Drat_light_over_heavy(iso_index(nn)))**(1./3.)
       end do
+!+---+-----------------------------------------------------------------+
+!bloss(2018-03): Clear any negative hydrometeor values, adding them to vapor
+!      These could be caused by violations of positivity during advection
+!      or excessive large-scale forcing tendencies.  Adding them to vapor
+!      allows the overall hydrometeor mass to be conserved as long as 
+!      vapor remains positive.
+!+---+-----------------------------------------------------------------+
+      !   ======== standard water ============
+      do k = kts,kte ! cloud liquid
+        negative_water = MIN(qc1d(k),0.)
+        qv1d(k) = qv1d(k) + negative_water
+        qc1d(k) = MAX(0., qc1d(k) - negative_water)
+      end do
 
+      do k = kts,kte ! cloud ice
+        negative_water = MIN(qi1d(k),0.)
+        qv1d(k) = qv1d(k) + negative_water
+        qi1d(k) = MAX(0., qi1d(k) - negative_water)
+      end do
+
+      do k = kts,kte ! rain
+        negative_water = MIN(qr1d(k),0.)
+        qv1d(k) = qv1d(k) + negative_water
+        qr1d(k) = MAX(0., qr1d(k) - negative_water)
+      end do
+
+      do k = kts,kte ! snow
+        negative_water = MIN(qs1d(k),0.)
+        qv1d(k) = qv1d(k) + negative_water
+        qs1d(k) = MAX(0., qs1d(k) - negative_water)
+      end do
+
+      do k = kts,kte ! graupel
+        negative_water = MIN(qg1d(k),0.)
+        qv1d(k) = qv1d(k) + negative_water
+        qg1d(k) = MAX(0., qg1d(k) - negative_water)
+      end do
+
+      !   ======== isotopologues ============
+      do nn = 1,niso ! isotopic cloud liquid
+        do k = kts,kte
+          negative_water = MIN(iso_qc1d(k,nn),0.)
+          iso_qv1d(k,nn) = iso_qv1d(k,nn) + negative_water
+          iso_qc1d(k,nn) = MAX(0., iso_qc1d(k,nn) - negative_water)
+        end do
+      end do
+
+      do nn = 1,niso ! cloud ice
+        do k = kts,kte
+          negative_water = MIN(iso_qi1d(k,nn),0.)
+          iso_qv1d(k,nn) = iso_qv1d(k,nn) + negative_water
+          iso_qi1d(k,nn) = MAX(0., iso_qi1d(k,nn) - negative_water)
+        end do
+      end do
+
+      do nn = 1,niso ! rain
+        do k = kts,kte
+          negative_water = MIN(iso_qr1d(k,nn),0.)
+          iso_qv1d(k,nn) = iso_qv1d(k,nn) + negative_water
+          iso_qr1d(k,nn) = MAX(0., iso_qr1d(k,nn) - negative_water)
+        end do
+      end do
+
+      do nn = 1,niso ! snow
+        do k = kts,kte
+          negative_water = MIN(iso_qs1d(k,nn),0.)
+          iso_qv1d(k,nn) = iso_qv1d(k,nn) + negative_water
+          iso_qs1d(k,nn) = MAX(0., iso_qs1d(k,nn) - negative_water)
+        end do
+      end do
+
+      do nn = 1,niso ! graupel
+        do k = kts,kte
+          negative_water = MIN(iso_qg1d(k,nn),0.)
+          iso_qv1d(k,nn) = iso_qv1d(k,nn) + negative_water
+          iso_qg1d(k,nn) = MAX(0., iso_qg1d(k,nn) - negative_water)
+        end do
+      end do
       !bloss(2014-10): Initialize aggregate tendencies to zero
       qliq_auto(:) = 0.
       qliq_coll(:) = 0.
@@ -1704,10 +1788,15 @@
             no_micro = .false.
             rc(k) = qc1d(k)*rho(k)
             L_qc(k) = .true.
+            !bloss(2018-03-20): if hydrometeor mass is positive, compute isotope ratio
+            isor_c(k,:) = iso_qc1d(k,:)/qc1d(k)
          else
             qc1d(k) = 0.0
             rc(k) = R1
             L_qc(k) = .false.
+            !bloss(2018-03-20): add isotope cloud mass back to vapor
+            iso_qv1d(k,:) = iso_qv1d(k,:) + iso_qc1d(k,:)
+            iso_qc1d(k,:) = 0.
          endif
          if (qi1d(k) .gt. R1) then
             no_micro = .false.
@@ -1724,12 +1813,17 @@
              lami = cie(2)/300.E-6
              ni(k) = cig(1)*oig2*ri(k)/am_i*lami**bm_i
             endif
+            !bloss(2018-03-20): if hydrometeor mass is positive, compute isotope ratio
+            isor_i(k,:) = iso_qi1d(k,:)/qi1d(k)
          else
             qi1d(k) = 0.0
             ni1d(k) = 0.0
             ri(k) = R1
             ni(k) = R2
             L_qi(k) = .false.
+            !bloss(2018-03-20): add isotope cloud ice mass back to vapor
+            iso_qv1d(k,:) = iso_qv1d(k,:) + iso_qi1d(k,:)
+            iso_qi1d(k,:) = 0.
          endif
          if (qr1d(k) .gt. R1) then
             no_micro = .false.
@@ -1747,49 +1841,51 @@
                lamr = (3.0 + mu_r + 0.672) / mvd_r(k)
                nr(k) = crg(2)*org3*rr(k)*lamr**bm_r / am_r
             endif
+            !bloss(2018-03-20): if hydrometeor mass is positive, compute isotope ratio
+            isor_r(k,:) = iso_qr1d(k,:)/qr1d(k)
          else
             qr1d(k) = 0.0
             nr1d(k) = 0.0
             rr(k) = R1
             nr(k) = R2
             L_qr(k) = .false.
+            !bloss(2018-03-20): add isotope rain mass back to vapor
+            iso_qv1d(k,:) = iso_qv1d(k,:) + iso_qr1d(k,:)
+            iso_qr1d(k,:) = 0.
          endif
          if (qs1d(k) .gt. R1) then
             no_micro = .false.
             rs(k) = qs1d(k)*rho(k)
             L_qs(k) = .true.
+            !bloss(2018-03-20): if hydrometeor mass is positive, compute isotope ratio
+            isor_s(k,:) = iso_qs1d(k,:)/qs1d(k)
          else
             qs1d(k) = 0.0
             rs(k) = R1
             L_qs(k) = .false.
+            !bloss(2018-03-20): add isotope snow mass back to vapor
+            iso_qv1d(k,:) = iso_qv1d(k,:) + iso_qs1d(k,:)
+            iso_qs1d(k,:) = 0.
          endif
          if (qg1d(k) .gt. R1) then
             no_micro = .false.
             rg(k) = qg1d(k)*rho(k)
             L_qg(k) = .true.
+            !bloss(2018-03-20): if hydrometeor mass is positive, compute isotope ratio
+            isor_g(k,:) = iso_qg1d(k,:)/qg1d(k)
          else
             qg1d(k) = 0.0
             rg(k) = R1
             L_qg(k) = .false.
+            !bloss(2018-03-20): add isotope graupel mass back to vapor
+            iso_qv1d(k,:) = iso_qv1d(k,:) + iso_qg1d(k,:)
+            iso_qg1d(k,:) = 0.
          endif
-      enddo
-      ! initialize to unreasonable value.  This should make obvious
-      ! any spurious use of this ratio (e.g., multiplying the cloud
-      ! liquid isotope ratio by a process rate when no cloud liquid exists)
-      isor_v(:,:) = 1.e8
-      isor_c(:,:) = 1.e10
-      isor_i(:,:) = 1.e12
-      isor_r(:,:) = 1.e14
-      isor_s(:,:) = 1.e16
-      isor_g(:,:) = 1.e18
+
+         ! update isotope ratio of vapor
       do nn = 1,niso
-        do k = kts, kte
+           iso_qv1d(k,nn) = MAX(0., iso_qv1d(k,nn))
           isor_v(k,nn) = iso_qv1d(k,nn)/qv(k) ! updated
-          if(L_qc(k)) isor_c(k,nn) = iso_qc1d(k,nn)/qc1d(k)
-          if(L_qi(k)) isor_i(k,nn) = iso_qi1d(k,nn)/qi1d(k)
-          if(L_qr(k)) isor_r(k,nn) = iso_qr1d(k,nn)/qr1d(k)
-          if(L_qs(k)) isor_s(k,nn) = iso_qs1d(k,nn)/qs1d(k)
-          if(L_qg(k)) isor_g(k,nn) = iso_qg1d(k,nn)/qg1d(k)
         end do
       end do
 !+---+-----------------------------------------------------------------+
@@ -3128,15 +3224,13 @@
             iso_qgten(k,:) = -iso_qg1d(k,:)*odt
          endif
       enddo
-      ! initialize to unreasonable value.  This should make obvious
-      ! any spurious use of this ratio (e.g., multiplying the cloud
-      ! liquid isotope ratio by a process rate when no cloud liquid exists)
-      isor_v(:,:) = 1.e8
-      isor_c(:,:) = 1.e10
-      isor_i(:,:) = 1.e12
-      isor_r(:,:) = 1.e14
-      isor_s(:,:) = 1.e16
-      isor_g(:,:) = 1.e18
+      ! initialize isotope ratio to zero
+      isor_v(:,:) = 0.
+      isor_c(:,:) = 0.
+      isor_i(:,:) = 0.
+      isor_r(:,:) = 0.
+      isor_s(:,:) = 0.
+      isor_g(:,:) = 0.
       !Re-define isotope ratios based on updated mixing ratios
       do nn = 1,niso
         do k = kts, kte
@@ -3497,7 +3591,7 @@
             iso_qrten(k,nn) = iso_qrten(k,nn) - iso_prv_rev(k,nn)
             iso_qvten(k,nn) = iso_qvten(k,nn) + iso_prv_rev(k,nn)
             iso_rr(k,nn) = MAX(R1, (iso_qr1d(k,nn) + DT*iso_qrten(k,nn))*rho(k))
-            iso_qv(k,nn) = MAX(1.E-10, &
+            iso_qv(k,nn) = MAX(1.E-10*isor_v(k,nn), &
                  iso_qv1d(k,nn) + DT*iso_qvten(k,nn))
           end do
          endif
@@ -3539,7 +3633,7 @@
          ! update cloud and vapor isotopologues
          do nn = 1,niso
            iso_rc(k,nn) = MAX(R1, (iso_qc1d(k,nn) + DT*iso_qcten(k,nn))*rho(k))
-           iso_qv(k,nn) = MAX(1.E-10, iso_qv1d(k,nn) + DT*iso_qvten(k,nn))
+           iso_qv(k,nn) = MAX(1.E-10*isor_v(k,nn), iso_qv1d(k,nn) + DT*iso_qvten(k,nn))
          end do
           rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
        enddo
@@ -3865,10 +3959,35 @@
           qiten(k) = qiten(k) - xri*odt
           niten(k) = -ni1d(k)*odt
           tten(k) = tten(k) - lfus*ocp(k)*xri*odt*(1-IFDRY)
+          prw_iml(k) = xri*odt
           do nn = 1,niso
             xri = MAX(0.0, iso_qi1d(k,nn) + iso_qiten(k,nn)*DT)
             iso_qcten(k,nn) = iso_qcten(k,nn) + xri*odt
             iso_qiten(k,nn) = iso_qiten(k,nn) - xri*odt
+            iso_prw_iml(k,nn) = xri*odt
+
+            ! re-equilibrate vapor with newly-generated cloud liquid
+            !   Note that this may be a bit excessive, since this liquid
+            !   could persist for one time step even in subsaturated conditions
+            !   but this process is the only one would cause the vapor and cloud
+            !   liquid to be out of equilibrium outside the microphysics, so that
+            !   I am addressing it here.
+             alpha_equil_liq(nn) = alfaW_equilibrium(temp(k),iso_index(nn))
+             ! compute the mass mixing ratio of heavy vapor when in
+             !   isotopic equilibrium with cloud.  
+             iso_qtot = iso_qv1d(k,nn) + iso_qc1d(k,nn) + DT*(iso_qvten(k,nn)+iso_qcten(k,nn))
+             qcond = qc1d(k) + DT*qcten(k)
+             qvapor = qv1d(k) + DT*qvten(k)
+             iso_qv_equil = &
+                  iso_qtot * qvapor / ( qvapor + alpha_equil_liq(nn)*qcond )
+
+             iso_prw_vcd(k,nn) = iso_prw_vcd(k,nn)  &
+                  + odt*( iso_qv(k,nn) - iso_qv_equil )
+
+             iso_qvten(k,nn) = iso_qvten(k,nn) &
+                  + odt*( iso_qv_equil - iso_qv1d(k,nn) - DT*iso_qvten(k,nn) )
+             iso_qcten(k,nn) = iso_qcten(k,nn) &
+                  - odt*( iso_qv_equil - iso_qv1d(k,nn) - DT*iso_qvten(k,nn) )
           end do
          endif
          xrc = MAX(0.0, qc1d(k) + qcten(k)*DT)
@@ -3893,7 +4012,8 @@
          t1d(k)  = t1d(k) + tten(k)*DT
          qv1d(k) = MAX(1.E-10, qv1d(k) + qvten(k)*DT)
          do nn = 1,niso
-           iso_qv1d(k,nn) = MAX(1.E-10, iso_qv1d(k,nn) + iso_qvten(k,nn)*DT)
+           iso_qv1d(k,nn) = MAX(1.E-10*isor_v(k,nn), &
+                                iso_qv1d(k,nn) + iso_qvten(k,nn)*DT)
          end do
          qc1d(k) = qc1d(k) + qcten(k)*DT
          iso_qc1d(k,:) = iso_qc1d(k,:) + iso_qcten(k,:)*DT
