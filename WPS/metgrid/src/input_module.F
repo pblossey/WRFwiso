@@ -484,8 +484,10 @@ module input_module
          call ext_get_dom_ti_integer_scalar('SOUTH-NORTH_PATCH_START_STAG', sn_patch_s_stag)
          call ext_get_dom_ti_integer_scalar('SOUTH-NORTH_PATCH_END_STAG', sn_patch_e_stag)
          call ext_get_dom_ti_char          ('GRIDTYPE', grid_type)
-!!$         call ext_get_dom_ti_real_scalar   ('DX', dx)
-!!$         call ext_get_dom_ti_real_scalar   ('DY', dy)
+!bloss: I would sometimes get strange values for dx and dy when the get calls were placed here.
+!         Moving these calls to the bottom of this sequence seemed to solve the problem.
+!bloss         call ext_get_dom_ti_real_scalar   ('DX', dx)
+!bloss         call ext_get_dom_ti_real_scalar   ('DY', dy)
          call ext_get_dom_ti_integer_scalar('DYN_OPT', dyn_opt)
          call ext_get_dom_ti_real_scalar   ('CEN_LAT', cen_lat)
          call ext_get_dom_ti_real_scalar   ('CEN_LON', cen_lon)
