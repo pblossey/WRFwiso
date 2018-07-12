@@ -484,8 +484,8 @@ module input_module
          call ext_get_dom_ti_integer_scalar('SOUTH-NORTH_PATCH_START_STAG', sn_patch_s_stag)
          call ext_get_dom_ti_integer_scalar('SOUTH-NORTH_PATCH_END_STAG', sn_patch_e_stag)
          call ext_get_dom_ti_char          ('GRIDTYPE', grid_type)
-         call ext_get_dom_ti_real_scalar   ('DX', dx)
-         call ext_get_dom_ti_real_scalar   ('DY', dy)
+!!$         call ext_get_dom_ti_real_scalar   ('DX', dx)
+!!$         call ext_get_dom_ti_real_scalar   ('DY', dy)
          call ext_get_dom_ti_integer_scalar('DYN_OPT', dyn_opt)
          call ext_get_dom_ti_real_scalar   ('CEN_LAT', cen_lat)
          call ext_get_dom_ti_real_scalar   ('CEN_LON', cen_lon)
@@ -523,6 +523,9 @@ module input_module
          call ext_get_dom_ti_integer_scalar('sr_x', sr_x)
          call ext_get_dom_ti_integer_scalar('sr_y', sr_y)
    
+         call ext_get_dom_ti_real_scalar   ('DX', dx)
+         call ext_get_dom_ti_real_scalar   ('DY', dy)
+
       end if
 
   
