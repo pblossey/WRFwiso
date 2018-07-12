@@ -1,0 +1,390 @@
+Polar WRF 3.3.1 README
+November, 2011
+
+Here are the required files for polar optimized version of
+WRF version 3.3.1 developed by the Polar Meteorology Group of
+the Byrd Polar Research Center at The Ohio State University.
+Additional support is available at http://polarmet.osu.edu/hines/PWRF/ .
+The files are supplements to WRF-ARW version 3.3.1 available from
+NCAR at http://www.mmm.ucar.edu/wrf/users/download/get_source.html.
+The phys subdirectory also includes the bugfixed version of the Morrison
+two-moment microphysics scheme for WRF 3.3.1
+
+Included in this tar file are the files:
+
+files
+README.PWRF.3.3.1
+README.PWRF.3.2
+README.PWRF.3.1.1
+
+dyn_em/
+	module_first_rk_step_part1.F.PWRF3.3.1
+	module_initialize_real.F.PWRF3.3.1
+	start_em.F.PWRF3.3.1
+
+phys/
+	module_sf_noahlsm.F.PWRF3.3
+	module_sf_noahdrv.F.PWRF3.3
+	module_physics_init.F.PWRF3.3.1
+	module_surface_driver.F.PWRF3.3.1
+	module_mp_morr_two_moment.F.fix
+
+Registry/
+	Registry.EM.PWRF3.3.1
+	Registry.EM_SST.PWRF3.3.1
+
+run/
+	LANDUSE.TBL.PWRF3.3
+	VEGPARM.TBL.PWRF3.3
+
+share/
+	module_soil_pre.F.PWRF3.3
+
+test/
+	README.namelist.input
+	namelist.input			[ a sample namelist.input ]
+
+WPS/
+	README-WPS-seaice
+        seaice-thicknes_write.NH.F90
+        seaice-thicknes_write.NH.25km.F90
+	seaice-intermd_write.F90.old	
+	seaice-intermd_write.NH.F90.old
+	seaice-intermd_write.F90	
+	seaice-intermd_write.NH.F90
+	seaice-thicknes_write.NH.F90
+	locate.f
+	AMSR_E_L3_SeaIce25km_B06_20070706.txt.gz
+	AMSR-E.latlon.304x448.txt.gz
+        AMSR-E.latlon.608x896.txt.gz
+        AMSR-E.latlon.1216x1792.txt.gz
+	Grid.304x448.PolarStereo.gz
+        Grid.608x896.PolarStereo.gz
+        Grid.1216x1792.PolarStereo.gz
+        namelist.139x97.Greenland.wps
+        namelist.141x111.WestArtic.wps
+        README-WPS-seaice
+          + some sample file for the 02-04 Aug. 2007 Greenland and 20-22 Jan. 1998 SHEBA cases
+
+These files [except for the README and WPS files] are to replace the files on 
+the relative directories minus the ".PWRF3.3.1" in the listed names.
+
+This can be done, for example, by the following renaming and linking:
+
+mv PWRF3.3.1 [your source directory]/WRFV3	{ the directory where WRF version 3.3.1 is installed
+cd [your source directory]/WRFV3
+mv share/module_soil_pre.F share/module_soil_pre.F-unpolar
+mv run/LANDUSE.TBL run/LANDUSE.TBL-unpolar
+mv run/VEGPARM.TBL run/LANDUSE.TBL-unpolar  	{store the previous versions
+mv phys/module_sf_noahlsm.F phys/module_sf_noahlsm.F-unpolar
+mv phys/module_sf_noahdrv.F phys/module_sf_noahdrv.F-unpolar
+mv phys/module_physics_init.F phys/module_physics_init.F-unpolar
+mv phys/module_surface_driver.F phys/module_surface_driver.F-unpolar
+mv dyn_em/module_first_rk_step_part1.F dyn_em/module_first_rk_step_part1.F-unpolar
+mv dyn_em/module_initialize_real.F dyn_em/module_initialize_real.F-unpolar
+mv dyn_em/start_em.F dyn_em/start_em.F-unpolar
+mv Registry/Registry.EM ../Registry.EM-unpolar
+mv Registry/Registry.EM_SST ../Registry.EM_SST-unpolar
+ln -s [source directory]/WRFV3/PWRF3.3.1/share/module_soil_pre.F.PWRF3.3 share/module_soil_pre.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/run/LANDUSE.TBL.PWRF3.3 run/LANDUSE.TBL
+ln -s [source directory]/WRFV3/PWRF3.3.1/run/VEGPARM.TBL.PWRF3.3 run/VEGPARM.TBL
+ln -s [source directory]/WRFV3/PWRF3.3.1/phys/module_sf_noahlsm.F.PWRF3.3 phys/module_sf_noahlsm.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/phys/module_sf_noahdrv.F.PWRF3.3 phys/module_sf_noahdrv.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/phys/module_physics_init.F.PWRF3.3.1 phys/module_physics_init.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/phys/module_surface_driver.F.PWRF3.3.1 phys/module_surface_driver.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/dyn_em/module_first_rk_step_part1.F.PWRF3.3.1 dyn_em/module_first_rk_step_part1.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/dyn_em/module_initialize_real.F.PWRF3.3.1 dyn_em/module_initialize_real.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/dyn_em/start_em.F.PWRF3.3.1 dyn_em/start_em.F
+ln -s [source directory]/WRFV3/PWRF3.3.1/Registry/Registry.EM.PWRF3.3.1 Registry/Registry.EM
+ln -s [source directory]/WRFV3/PWRF3.3.1/Registry/Registry.EM_SST.PWRF3.3.1 Registry_SST/Registry.EM
+...
+do this for all the files
+...
+---------------------------------------------------------------------------
+Key options:   (namelist options)
+
+if you wish to use FRACTIONAL SEA ICE, please set fractional_seaice = 1
+ in the physics section of namelist input. This is a standard option in 
+ recent versions of WRF, however, it isn't implemented unless you set the flag.
+
+An allowance for specified variable "seaice_thickness" can also be set the physics section 
+of the namelist input file. You need to give the values for the SEA ICE THICKNESS. This can 
+be done through the WPS supplemental files, thus the sea ice thickness will be in the 
+standard data input file along with sea surface temperature and other variables.
+If you want that option on set seaice_thickness = 1 		(this is an enabling flag)
+
+compiler options: (these options are at the beginning of subroutine files and must be set
+   consistent between the files)
+
+#define BPRC_SI_DEPTH (Noah LSM, Noah LSM driver, surface driver, module_soil_pre.F, module_initialize_real.F, module_first_rk_step_part1.F)
+	Allows allows variable sea ice thickness as an option
+	connected with variables SITHIK (sea ice thickness in meters)
+	and SNOWSI (snow depth on sea ice in meters). If you use this
+	option the sea ice thickness and snow depth must be specified/input
+	in some way. The new code in the WPS subdirectory has the capability of 
+	generating such files for the Arctic. For the Arctic System Reanalysis, 
+	Bill Chapman of UIUC has created a 2000-2002 history of sea ice age 
+	and thickness at 25 km resolution that may serve as a climatogical input 
+      	for sea ice thickness. There is a 6.25 km resolution dataset for 2002-2010.
+	See http://igloo.atmos.uiuc.edu/ASR/.
+        The ASR project also put together a climatological treatment 
+	of Arctic Ocean snow thickness based upon Warren et al. (1999). There is 
+	supplemental WPS code to implement this. A note of caution - testing 
+        suggests implementing Warren's snow depth may lead to winter cold biases 
+        over sea ice.
+	Sea ice thickness is currently held to the range 0.1 to 10 m. The
+	minimum thickness may be increased to 0.25 m for the 10-layer ASR.
+	Snow depth on sea ice currently ranges is 0.001 to 1 m. Tests show that winter 
+        results over the sea ice are sensitive to sea ice thickness and snow depth, 
+        and summer results may be sensitive to snow on the sea ice.
+		default is option off 
+
+#define BPRC_SI_TEMPERATURE (Soil initialization - module_soil_pre.F)
+	Only use input xice/seaice variable to define sea ice locations.
+	Otherwise TSK (skin temperature) can be used to determine 
+	where sea ice is.
+		default is option on
+
+#define BPRC_EXTREME_CHECK (Noah LSM driver)
+ 	This option enables checks on reasonable value ranges for 
+	model variables such as T1 (surface temperature), PSFC 
+	(surface pressure), and STC (soil temperature). This is
+	a holdover from Polar WRF 3.0.1 and now put as an option.
+	It has some value in diagnosing errors, which may be located 
+	quicker with this option. Generally not needed in runs that are
+	proceeding smoothly.
+		default is option off
+
+#define ICEZO_SMALL (Noah LSM driver and Noah LSM)
+	This option reduces the surface roughness (Z0, ZNT, and Z0BRD) 
+	to 0.1 mm over permanent ice. Recent results suggest the surface 
+	boundary layer wind speed is too high over Antarctica, so this
+	option is not currently recommended.
+		default is option off
+
+#define SEAICE_FREEZE (Noah LSM driver)
+	This option changes to base subsurface temperature for 
+	sea ice from 271.16 K to 271.36 K (-1.8 C).
+		default is option on
+
+#define BPRC_MODS (Noah LSM, Noah driver, and surface driver)
+	This option sets snow emissivity to 0.98. It also reduces
+	the maximum snow thickness over permanent ice to "4 times DSOIL" for 	
+	purpose of calculating ground heat flux for permanent ice.
+	An addition beginning with Polar WRF 3.2 is a wrapper routine for 
+	the MYNN surface layer of the PBL. This enables the MYNN
+	surface atmospheric layer scheme to run separately for 
+	the ice and liquid components of pack ice grid points, similar
+	to those for the MYJ and YSU surface layer atmospheric schemes.
+	Now sets snow density to relative value of 0.35 based upon Yen (1981)
+	Antarctic observations
+		default is option on
+
+#define SNOW_DEPTH_5CM (Noah LSM)
+	Sets the depth of snow on sea ice to 5 cm, the classic setting for WRF Noah. Observations
+	suggest deeper snow over Arctic Ocean sea ice during winter, and very little snow over 
+	mid and late-summer Arctic sea ice. Allowing the snow depth over Arctic sea ice to be much
+	deeper than 5 cm can result in a winter cold bias. Setting this option on overrides snow 
+	depth input through the initial conditions.
+		default is option on
+
+#define SI_DEPTH_3M (Noah LSM)
+	These options set the sea ice depth to the standard Noah value 3 m. 
+	This mimics standard Noah with the sea ice thickness option
+	turned on. Do not use if you wish to specify your own variable
+	sea ice thickness. 3 m is a relatively thick value for sea ice and may be too
+	thick for Arctic first-year ice. Antarctic sea ice is generally much thinner than 
+	3 m.
+		default is option on
+	
+#define ORGANIC_TUNDRA (Noah LSM)
+	This option sets the thermal conductivity for the upper soil
+	layer to 0.25 W m-2 K-1 for Tundra (landuse 20, 21, 22, or 23)
+	prior to any averaging with snow thermal conductivity. The
+	motivation for this option is Mike Barlage's work with Noah
+	in preparation for the Arctic System Reanalysis and the Hines et al. 
+	(2010) test of Polar WRF 3.0.1.1 for Arctic land. A peat or "organic"
+	layer seems to work well for the soil type along the North Slope 
+	of Alaska. The effect there is too reduce the conductivity by an order
+	of magnitude resulting in warmer winter soil temperatures, cooler 
+	summer soil temperatures, slightly colder atmospheric temperatures
+	during winter, and reduced ground heat flux. I don't know how well 
+	this works for other Arctic environments. 
+		default is option off
+
+#define ALTERNATE_SFCT (Noah LSM)
+	This option now lets the user decide to use Polar WRF's 
+	method based upon direct calculation of the surface 
+	energy balance .. or the classic WRF method for determining
+	the surface temperature over snow in SUBROUTINE SNOPAC.
+	Previously, it was found that that the Polar WRF direct
+	calculation produced better results over Greenland and
+	Antarctic ice sheets (option on). Which method produces better 
+ 	results over sea ice and Arctic land is uncertain. User's may 
+	wish to test with the option on and off for best results in
+	their cases. (This may be an important question).
+	Only surface temperature over snow is impacted. This option has
+	not been tested with recent version of PWRF.
+		default is option off
+
+#define ALBEDO_SI_WPS (Noah LSM, Noah driver, physics initialization, surface driver, start_em.F, and module_first_rk_step_part1.F)
+	Option to enable setting the sea ice albedo from the input (WPS).
+	Requires a 2D file in the input. Similar to the prescribed Arctic 
+	sea ice abledo for the ASR.
+	There is now code in the WPS subdirectory to set this for the Arctic.
+	For the Antarctic, you might wish to simply set a high, constant value.
+		default is option off
+
+#define BPRC_OLD_ALBSI (Noah LSM, Noah driver, physics initialization, surface driver, start_em.F, and module_first_rk_step_part1.F)
+	Older than the ALBEDO_SI_WPS option. Sets the sea ice albedo based upon
+	specifications in subroutines that run in the first timestep based upon Arctic SHEBA 1998 cycle.
+		default is option off
+
+#define UIUC_SI_ALBEDO (Noah LSM)
+	Sets the sea ice albedo using the UIUC Dept. of Atmospheric Sciences algorithm 
+	(Mills 2011, http://www.geology.illinois.edu/about/2011SESEResReviewAbs.pdf)
+	based upon near-surface atmospheric temperature, surface temperature, and snow depth. Mininum
+	value is 0.45, maximum value is 0.8. This prognostic formula doesn't require a specified 
+	seasonal cycle, or any pre-knowledge of melt and freeze. These values are designed for the 
+	Arctic, not the Antarctic. Arctic experience suggests the start of snowmelt over sea ice, 
+	often corresponding to seasonal reduction in albedo is not well captured by 
+	temperature-based algorithms.
+		default is option off
+
+#define LIMIT_SNOW_10CM (Noah LSM)
+	Limits the full implementation of BPRC_SI_DEPTH. Tests of Polar WRF 3.2
+	for the January 1998 (winter) SHEBA case show that that implementation of 
+	Warren et al.'s (1999) BPRC_SI_DEPTH often puts more than 20 cm of winter snow
+	on the Arctic Ocean sea ice. This was found to produce a cold bias at SHEBA.
+	Consequently, this option limits maximum snow depth to 10 cm, producing reasonable
+	near-surface temperatures during winter at SHEBA. This option does not limit 
+	the minimum snow thickness. The physics behind the heat flux through sea ice 
+	and snow is therefore suggested to require additional investigation.
+		default is option on
+
+#define LIMIT_SEAICE_25CM (Noah LSM, Noah driver, module_soil_pre.F.PWRF3.3)
+	A miminum limit for sea ice thickness put in place for the 10 
+	subsurface-layer Arctic System Reanalysis. Prevents ice layers from
+	becoming too thin.
+		default is option off
+
+In summary, key features include the possibility of variable
+sea ice thickness and variable snow cover on sea ice, which now have a
+plausible input for the Arctic through auxillary WPS programs. Arctic 
+sea ice thickness is available from Bill Chapman's 6.25 km (25 km) resolution 
+dataset for 2002-2008 (2000-2002). The seasonal evolution of 
+Arctic sea ice albedo can also be input through auxillary WPS programs. 
+The evolution is based upon a prescribed seasonal cycle modulated
+by Mark Anderson's snow melt on sea ice data. The MYNN PBL's surface 
+atmospheric layer can now be fully integrated with the frational sea ice.
+Similar to the MYJ and YSU schemes, it can be run twice for the ice and
+liquid components of pack ice grid points. The QNSE PBL's surface layer
+scheme does not yet have that option. It runs only once with the average
+of ice and liquid characteristics for sea ice points. 
+SITHIK, SNOWSI and ALBSI are 2D fields are produced in the running of real.exe
+if the appropriate options are enabled. These fields will be added to the 
+WRF output. We also suggest users consider the ORGANIC_TUNDRA
+option if that is appropriate for the soil in your domain, 
+and for users to experiment with ALTERNATE_SFCT.
+
+---------------------------------------------------------------------------
+Notes:
+
+The in file "module_mp_morr_two_moment.F" (not included here) is normally set 
+for typical id-latitude CCN values. The parameter INUC can be set at 0
+(mid-latitude aerosols) or 1 (M-PACE study - Oct. 2004, clean atmosphere).
+
+The subdirectory WPS section includes an optional feature for inputing
+NSIDC sea ice (AMSR-E, bootstrap, and AMSR-E/SSMI from Chapman) through 
+the WPS preprocessing.
+
+You may wish to edit the parameter tables "LANDUSE.TBL" and "VEGPARM.TBL" to
+better reflect the surface values of quantities such as seasonal albedo and
+emissitivy for your study.
+
+WRF3.1.1 (and later versions) have improved snow albedo compared to earlier 
+versions. 
+
+Tests suggest that Polar WRF 3.1.1 simulations have colder near-surface
+atmospheric temperatures and smaller magnitude ground heat fluxes
+for mid-winter cases in comparison to Polar WRF 3.0.1.1.
+
+These routines are designed for WRF version 3.2 If you try to use them  
+with another version of WRF you are likely to run into incompatibility 
+problems.
+
+As a favor, we ask that you reference the journal articles on Polar WRF in 
+your publications that make use of Polar WRF. We would also like to hear from 
+users of Polar WRF on the basic plans for the model's use.  Comments on 
+the applicability and results of Polar WRF are encouraged, as user input 
+helps improve the product. If you have improvements for Polar WRF, please 
+share them so we can all benefit in a sense of a community model.
+
+Testing of Polar WRF 3.2 has suggested the following:
+
+Winter and summer temperatures are reasonable over the Arctic Ocean
+during summer and winter and along the North Slope of Alaska. 
+
+There is a warm bias for near surface temperature during winter over Greenland.
+
+Realistic simulation of near surface temperature requires a reduction in the
+summer albedo over Greenland. An albedo of 0.835 is a typical observed value.
+
+The diurnal cycle of summer temperature of Greenland is larger than that 
+observed.
+
+There is a dry bias in the near surface atmosphere.
+
+A negative near-surface wind speed bias with earlier versions of Polar WRF
+is not found in tests of Polar WRF 3.2. There may be a slight positive bias
+now.
+
+The YSU PBL does not give good results.
+
+The RRTMG radiation schemes give the best results. It has been suggested,
+however, that version 3.2 has some issues in the upper atmosphere. Stay 
+tuned for further developments.
+
+The MYNN and QNSE PBL schemes may be slight improvements over
+the MYJ scheme.
+
+More study may be required of the heat transfer through sea ice and
+associated surface energy balance. Use of the Warren et al (1999) 
+climatological snow on sea ice dataset is not recommended at this time.
+
+Pending are tests over Anatctica and implementation into AMPS, along with
+additional ASR testing.
+
+Writeups on Polar WRF can be obtained from the sources:
+
+The OSU Polar Meteorology Group's Polar WRF web page:
+http://polarmet.osu.edu/PolarMet/pwrf.html
+
+Journal Publicationsi on Polar WRF:
+
+Wilson, A.B., D.H. Bromwich, and K.M. Hines, 2011: 
+Testing of Polar Weather Research and Forecasting (WRF) Model on the 
+Arctic System Reanalysis Domain. Part I. Surface and Upper Air Analysis.
+J. Geophys. Res., in preparation.
+
+Hines, K.M., D.H. Bromwich, D.H., L.-S. Bai, M. Barlage, and A.G. Slater, 
+2010: Development and Testing of Polar WRF. Part III. Arctic Land. 
+J. Climate, in press. 
+
+Bromwich, D.H., K.M. Hines, and L.-S. Bai, 2009: Development and Testing
+of Polar WRF: 2. Arctic Ocean. J. Geophys. Res., 114, D08122, 
+doi:10.1029/2008JD010300.
+
+Hines, K.M., and D.H. Bromwich, 2008: Development and Testing of Polar WRF.
+Part I. Greenland Ice Sheet Meteorology. Mon. Wea. Rev., 136, 1971-1989,
+doi: 10.1175/2007MWR2112.1.
+
+If you can add to the list of Polar WRF publications, that's great!
+
+-------------------------------------------------------------------------------
+Added August 26 2010:
+Dan Steinhoff has added the modified subroutines for WRF 3.2.1. Polar WRF can now be
+run with WRF 3.2.1, a version which includes bugfixes on the version 3.2 WRF release.
+The new files are denoted by the suffix ".PWRF3.2.1". This is only done for files
+that differ between versions 3.2 and 3.2.1.
+

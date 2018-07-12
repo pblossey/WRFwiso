@@ -1,0 +1,85 @@
+Starting with WRF 3.5, the thickness, snow depth upon, and albedo of sea ice can 
+be be specified through input. This removes the need for several Polar WRF options
+in the compiler directives (such as #define BPRC_SI_DEPTH) that were included at the tops
+of WRF subroutines. A number of Polar WRF options can still be implemented by compiler directives.
+(see older versions of Polar WRF RERADME files). A bugfixed version of Registry.EM_COMMON 
+is also included for use of sea ice specifications in restart runs. In the planning stages,
+but not yet ready is a web page from which users can download Arctic and Antarctic values of
+sea ice concentration, sea ice thickness, snow depth on sea ice, and sea ice albedo (Arctic).
+
+To run with polar options it's best to have the flags enabled for sea ice, sea ice albedo and sea ice thickness:
+		:FLAG_SNOWSI = 1 ;
+		:FLAG_ALBSI = 1 ;
+		:FLAG_ICEDEPTH = 1 ;
+in the met_em.d01.YYYY-MM-DD_HH:00:00.nc files (output of WPS)
+
+sea ice concentration should be stored under the variable SEAICE in the met files
+sea ice thickness should be stored under the variable ICEDEPTH in the met files
+sea ice albedo should be stored under the variable ALBSI in the met files
+sea depth on sea ice should be stored under the variable SNOWSI in the met files
+
+In the &physics block of namelist.input
+
+ SEAICE_THICKNESS_OPT = 1,
+ SEAICE_THICKNESS_DEFAULT = 3.,
+ SEAICE_SNOWDEPTH_OPT = 1,
+ SEAICE_SNOWDEPTH_MAX = 1.0,
+ SEAICE_SNOWDEPTH_MIN = 0.001,
+ SEAICE_ALBEDO_OPT = 2,
+ SEAICE_ALBEDO_DEFAULT = 0.82
+
+will enable the input sea ice thickness, enable the input snow depth on sea ice,
+and enable the input sea ice albedo. The maximum snow depth on sea ice will be 1 m, 
+and the minimum is 0.001 m.
+
+If you wish to specify sea ice thickness at a constant given value use
+
+ SEAICE_THICKNESS_OPT = 0,
+ SEAICE_THICKNESS_DEFAULT = [input value in meters]
+
+If you wish to use snow depth on sea ice at a specified constant value use
+
+ SEAICE_SNOWDEPTH_OPT = 1,
+ SEAICE_SNOWDEPTH_MAX = [input value in meters]
+ SEAICE_SNOWDEPTH_MIN = [input value in meters]
+
+sst_update = 1, 
+will hopefully allow sea surface specifications to be updated during a run.
+
+List of files for running and compiling Polar WRF 3.7.1:
+
+dyn_em/module_big_step_utilities_em.F.PWRF3.7.1
+dyn_em/module_first_rk_step_part1.F.PWRF3.7.1
+dyn_em/module_initialize_real.F.PWRF3.7.1
+
+phys/module_mp_morr_two_moment.F.PWRF3.7.1
+phys/module_sf_noah_seaice.F.PWRF3.7.1
+phys/module_sf_noah_seaice_drv.F.PWRF3.7.1
+phys/module_sf_noahlsm.F.PWRF3.7.1
+phys/module_sf_noahlsm_glacial_only.F.PWRF3.7.1
+phys/module_sf_noahdrv.F.PWRF3.7.1
+
+run/VEGPARM.TBL.PWRF3.7.1
+run/LANDUSE.TBL.PWRF3.7.1
+
+share/module_soil_pre.F.PWRF3.7.1
+
+These files must replace (renamed to)
+
+dyn_em/module_big_step_utilities_em.F
+dyn_em/module_first_rk_step_part1.F
+dyn_em/module_initialize_real.F
+
+phys/module_mp_morr_two_moment.F
+phys/module_sf_noah_seaice.F
+phys/module_sf_noah_seaice_drv.F
+phys/module_sf_noahlsm.F
+phys/module_sf_noahlsm_glacial_only.F
+phys/module_sf_noahdrv.F
+
+run/VEGPARM.TBL
+run/LANDUSE.TBL
+
+share/module_soil_pre.F
+
+
