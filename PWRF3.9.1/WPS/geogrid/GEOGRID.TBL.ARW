@@ -151,7 +151,7 @@ name=GREENFRAC
         fill_missing = 0.
         rel_path=modis_fpar:greenfrac_fpar_modis/
         rel_path=nesdis_greenfrac:greenfrac/
-        rel_path=default:greenfrac_fpar_modis/
+        rel_path=default:greenfrac/
 ===============================
 name=LAI12M
         priority=1
