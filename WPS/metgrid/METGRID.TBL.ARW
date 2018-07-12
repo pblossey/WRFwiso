@@ -1034,3 +1034,35 @@ mpas_name=tslb
         masked=water
         fill_missing=1.
 ========================================
+name=DHDOV
+        interp_option=four_pt+average_4pt
+        fill_missing=0.
+        fill_lev=200100:vertical_index;
+        flag_in_output=FLAG_DHDOV
+========================================
+name=DO18V
+        interp_option=four_pt+average_4pt
+        fill_missing=0.
+        fill_lev=200100:vertical_index;
+        flag_in_output=FLAG_DO18V
+========================================
+name=DHDOSURF
+        interp_option=four_pt+average_4pt
+        fill_lev=201300:const(201300.)
+        flag_in_output=FLAG_DHDOSURF
+========================================
+name=DO18SURF
+        interp_option=four_pt+average_4pt
+        fill_lev=201300:const(201300.)
+        flag_in_output=FLAG_DO18SURF
+========================================
+name=DHDOQFX
+        interp_option=four_pt+average_4pt
+        fill_lev=200100:const(200100.)
+        flag_in_output=FLAG_DHDOQFX
+========================================
+name=DO18QFX
+        interp_option=four_pt+average_4pt
+        fill_lev=200100:const(200100.)
+        flag_in_output=FLAG_DO18QFX
+========================================
