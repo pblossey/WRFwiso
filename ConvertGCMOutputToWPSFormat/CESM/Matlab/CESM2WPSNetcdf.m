@@ -43,7 +43,7 @@ for itime = 1:5 %cam.Ndate
 
   % set up netcdf file with attributes.  Add variables later
   ncout = CreateCESMFiniteVolumeNetcdfSchema(model,hdate,cam.lon,cam.lat);
-  ncfname = sprintf('../Output/%s.nc',hdate);
+  ncfname = sprintf('../../Output/%s.nc',hdate);
   ncwriteschema(ncfname,ncout);
 
   cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo-%.2d.nc',tag,mm);
