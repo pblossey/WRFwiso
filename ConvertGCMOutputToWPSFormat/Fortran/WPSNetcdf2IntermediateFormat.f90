@@ -26,6 +26,8 @@ program WPSNetcdf2IntermediateFormat
   ierr = nf90_open(ncname,nf90_nowrite,ncid)
   if(ierr.ne.nf90_noerr) write(*,*) 'open ', nf90_strerror(ierr)
 
+  write(*,*) 'nx, ny (or nlon, nlat) = ', nx, ny
+
   call ReadWPSGlobalAttributes(ncid,ounit,fname)
 
   write(*,*) TRIM(fname)
@@ -35,7 +37,10 @@ program WPSNetcdf2IntermediateFormat
   ierr = nf90_inquire(ncid,nDim,nVar,nAtt)
   if(ierr.ne.nf90_noerr)   write(*,*) 'inquire ', nf90_strerror(ierr)
 
-  write(*,*) nDim, nVar, nAtt
+  write(*,*) 'Number of dimensions = ', nDim
+  write(*,*) 'Number of variables = ', nVar
+  write(*,*) 'Number of attributes = ', nAtt
+  write(*,*) 'nx, ny (or nlon, nlat) = ', nx, ny
 
   ALLOCATE(slab(nx,ny), STAT=ierr)
   if(ierr.ne.0) STOP 'Could not allocate slab'

@@ -44,7 +44,7 @@ contains
     integer, intent(out) :: ounit ! Unit number for file output
     character(LEN=40) :: fname
 
-    real :: nx, ny
+    real :: nx_real, ny_real
 
     integer :: status(54), ii
     real :: is_wind_grid_rel_real
@@ -53,14 +53,12 @@ contains
     status(2) = nf90_get_att(ncid,nf90_global,'startloc',startloc)
     status(3) = nf90_get_att(ncid,nf90_global,'startlat',startlat)
     status(4) = nf90_get_att(ncid,nf90_global,'startlon',startlon)
-    status(5) = nf90_get_att(ncid,nf90_global,'nx',nx)
-    status(6) = nf90_get_att(ncid,nf90_global,'ny',ny)
+    status(5) = nf90_get_att(ncid,nf90_global,'nx',nx_real)
+    status(6) = nf90_get_att(ncid,nf90_global,'ny',ny_real)
     status(7) = nf90_get_att(ncid,nf90_global,'deltalat',deltalat)
     status(8) = nf90_get_att(ncid,nf90_global,'deltalon',deltalon)
     status(9) = nf90_get_att(ncid,nf90_global,'earth_radius',earth_radius)
     status(10) = nf90_get_att(ncid,nf90_global,'is_wind_grid_rel',is_wind_grid_rel_real)
-    if(is_wind_grid_rel_real.gt.0.) is_wind_grid_rel = .true.
-
     status(11) = nf90_get_att(ncid,nf90_global,'map_source',map_source)
 
     status(12) = nf90_get_att(ncid,nf90_global,'ounit',ounit)
@@ -75,6 +73,16 @@ contains
     end do
 
     fname = TRIM(datasource) // ':' // TRIM(hdate)
+
+
+    ! convert floating point attributes to logical/integers
+    if(is_wind_grid_rel_real.gt.0.) is_wind_grid_rel = .true.
+    nx = NINT(nx_real)
+    write(*,*) 'nx_real = ', nx_real, ' nx = ', nx
+    write(*,*) 'nx_real nf90error = ', nf90_strerror(status(5))
+    ny = NINT(ny_real)
+    write(*,*) 'ny_real = ', ny_real, ' ny = ', ny
+    write(*,*) 'nx_real nf90error = ', nf90_strerror(status(6))
 
   end subroutine ReadWPSGlobalAttributes
 
