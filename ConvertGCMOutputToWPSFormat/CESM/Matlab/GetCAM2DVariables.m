@@ -11,6 +11,9 @@ function [nout] = GetCAM2DVariables(ncWPS,cam,itime,hdate)
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
 
 
+tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+
+
   %  Get a list of 2D fields from CAM to be output.
   %  Some of these are easily translated for WPS.  Others will
   %  require a bit of computation.
@@ -58,9 +61,17 @@ function [nout] = GetCAM2DVariables(ncWPS,cam,itime,hdate)
        % content of precipitation from a monthly climatology.  
        % Probably okay for sea ice/antarctica.  
        %  Should revisit for land areas north of antarctica.
-       prect = double(ncread(cam.nc_cam_h0,'PRECT'));
-       prect_HDO = double(ncread(cam.nc_cam_h0,'PRECT_HDOR'));
 
+       % interpolate in time from montlhy average climatology.
+       %  This will let the forcings be smaooth from month to month
+       time = double(ncread(cam.nc_cam_h0,'time'));
+       prect = squeeze(interp1(time, ...
+                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
+                               tt_climo,'linear'));
+       prect_HDO = squeeze(interp1(time, ...
+                               permute(double(ncread(cam.nc_cam_h0,'PRECT_HDOR')),[3 1 2]), ...
+                               tt_climo,'linear'));
+       
        value = 1000*(prect_HDO./prect - 1);
 
       case {'DO18QFX  '}
@@ -68,8 +79,15 @@ function [nout] = GetCAM2DVariables(ncWPS,cam,itime,hdate)
        % compute deltaD of surface fluxes based on the isotopic
        % content of precipitation.  Probably okay for sea
        % ice/antarctica.  Should revisit for land areas north of antarctica.
-       prect = double(ncread(cam.nc_cam_h0,'PRECT'));
-       prect_H218O = double(ncread(cam.nc_cam_h0,'PRECT_H218OR'));
+       % interpolate in time from montly average climatology.
+       %  This will let the forcings be smaooth from month to month
+       time = double(ncread(cam.nc_cam_h0,'time'));
+       prect = squeeze(interp1(time, ...
+                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
+                               tt_climo,'linear'));
+       prect_H218O = squeeze(interp1(time, ...
+                               permute(double(ncread(cam.nc_cam_h0,'PRECT_H218OR')),[3 1 2]), ...
+                               tt_climo,'linear'));
 
        value = 1000*(prect_H218O./prect - 1);
 
@@ -87,8 +105,12 @@ function [nout] = GetCAM2DVariables(ncWPS,cam,itime,hdate)
 % $$$         qflx_18O = double(ncread(cam.nc_cam_h0,'QFLX_18O'));
 
        case {'DHDOSURF '}
+        % this applies to evaporation water, so that the value of
+        % zero seems appropriate for oceans.
         value = zeros(size(var_in));
        case {'D18OSURF '}
+        % this applies to evaporation water, so that the value of
+        % zero seems appropriate for oceans.
         value = zeros(size(var_in));
 
      otherwise

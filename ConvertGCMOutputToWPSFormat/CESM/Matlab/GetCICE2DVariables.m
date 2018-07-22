@@ -10,6 +10,7 @@ function [nout] = GetCICE2DVariables(ncWPS,cam,itime,hdate)
 %   The input, cam, is a structure holding useful information about
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
 
+tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
 
   %  Get a list of 2D fields from CAM to be output.
   %  Some of these are easily translated for WPS.  Others will
@@ -31,7 +32,11 @@ function [nout] = GetCICE2DVariables(ncWPS,cam,itime,hdate)
     start = [1 1 1]; %  Only one time in the monthly-mean output
                      %  files from CLM and CICE
     count = [cam.Nlon cam.Nlat 1];
-    value = double(ncread(cam.nc_cice_h0,CAMname,start,count));
+    value = double(ncread(cam.nc_cice_h0,CAMname)); %,start,count));
+
+    % interpolate the climatology to the current day of the year.
+    time = double(ncread(cam.nc_cice_h0,'time'));
+    value = squeeze(interp1(time,permute(value,[3 1 2]),tt_climo,'linear'));
 
     switch CAMname
       case {'hs'}

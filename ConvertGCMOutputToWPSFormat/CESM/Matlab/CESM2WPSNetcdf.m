@@ -46,9 +46,9 @@ for itime = 1:5 %cam.Ndate
   ncfname = sprintf('../../Output/%s.nc',hdate);
   ncwriteschema(ncfname,ncout);
 
-  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo-%.2d.nc',tag,mm);
-  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.%.4d-%.2d.nc',tag,yyyy,mm);
-  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.%.4d-%.2d.nc',tag,yyyy,mm);
+  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',tag);
+  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',tag);
+  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',tag);
 
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.

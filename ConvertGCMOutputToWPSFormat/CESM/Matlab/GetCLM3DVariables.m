@@ -10,16 +10,22 @@ function [nout] = GetCLM3DVariables(ncWPS,cam,itime,hdate,soil_depths)
 %   The input, cam, is a structure holding useful information about
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
 
+tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+
 clear tmp
 tmp.levgrnd = double(ncread(cam.nc_clm_h0,'levgrnd'));    
 Nlevgrnd = length(tmp.levgrnd);
+
+time = double(ncread(cam.nc_clm_h0,'time'));
 
 start = [1 1 1 1]; %  Only one time in the monthly-mean output
                    %  files from CLM and CICE
 count = [cam.Nlon cam.Nlat Nlevgrnd 1];
 wh = {'TSOI','H2OSOI','TSOI_ICE'};
 for k = 1:length(wh)
-  tmp.(wh{k}) = double(ncread(cam.nc_clm_h0,wh{k},start,count));
+  tmp.(wh{k}) = squeeze(interp1(time, ...
+                                permute(double(ncread(cam.nc_clm_h0,wh{k})),[4 1 2 3]), ...
+                                tt_climo,'linear')); %,start,count));
 end
 
 % interface depths for GCM soil levels
