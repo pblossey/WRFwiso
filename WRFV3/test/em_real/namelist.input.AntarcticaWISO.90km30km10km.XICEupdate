@@ -1,0 +1,155 @@
+ &time_control
+ run_days                            = 1,
+ run_hours                           = 00,
+ run_minutes                         = 0,
+ run_seconds                         = 0,
+ start_year                          = 2007, 2007, 2007,
+ start_month                         = 05, 05, 05,
+ start_day                           = 26, 26, 26,
+ start_hour                          = 00, 00, 00,
+ start_minute                        = 00, 00, 00,
+ start_second                        = 00, 00, 00,
+ end_year                            = 2007, 2007, 2007,
+ end_month                           = 05, 05, 05,
+ end_day                             = 27, 27, 27,
+ end_hour                            = 00, 00, 00,
+ end_minute                          = 00, 00, 00,
+ end_second                          = 00, 00, 00,
+ interval_seconds                    = 21600
+ input_from_file                     = .true., .true., .true.,
+ history_interval                    = 60, 60, 60, ! 60,   60,
+ frames_per_outfile                  = 28, 28, 28, ! 1000, 1000,
+ restart                             = .false.,
+ restart_interval                    = 2880,
+ io_form_history                     = 2
+ io_form_restart                     = 2
+ io_form_input                       = 2
+ io_form_boundary                    = 2
+ debug_level                         = 0
+
+io_form_auxinput4    = 2
+auxinput4_inname     = "wflowinp_d<domain>"
+auxinput4_interval   = 1440, 1440, 1440
+ /
+
+ &domains
+ use_adaptive_time_step = .true.
+ step_to_output_time    = .true.
+ target_cfl = 1.05,1.05,1.05
+ max_step_increase_pct = 5,51,51
+ starting_time_step = 180,90,30
+
+ time_step                           = 180,
+ time_step_fract_num                 = 0,
+ time_step_fract_den                 = 1,
+ max_dom                             = 3,
+ e_we                                = 130, 331, 667, !    112,   94,
+ e_sn                                = 165, 436, 628, !    97,    91,
+ e_vert                              = 51,  51, 51,
+ eta_levels                          =    1.0000000,   0.9946468,   0.9889215,   0.9828001,   0.9762576,   0.9692677,   0.9618027,   0.9538340,   0.9453315,   0.9362642,   0.9265997,   0.9163048,   0.9053455,   0.8936867,   0.8812929,   0.8681283,   0.8541568,   0.8393426,   0.8236505,   0.8070461,   0.7894967,   0.7709715,   0.7514425,   0.7308851,   0.7092789,   0.6866087,   0.6628655,   0.6380474,   0.6121613,   0.5852233,   0.5572610,   0.5283139,   0.4984354,   0.4676941,   0.4361746,   0.4039792,   0.3712285,   0.3380622,   0.3046394,   0.2711385,   0.2377561,   0.2047062,   0.1723616,   0.1428810,   0.1160447,   0.0916478,   0.0694992,   0.0494207,   0.0312464,   0.0148220,   0.0000000
+ p_top_requested                     = 5000,
+ num_metgrid_levels                  = 28,
+ num_metgrid_soil_levels             = 4,
+ dx                                  = 90.e3, 30.e3, 10.e3, ! 3333.33,
+ dy                                  = 90.e3, 30.e3, 10.e3, ! 3333.33,
+ grid_id                             = 1, 2, 3,
+ parent_id                           = 0, 1, 2,
+ i_parent_start                      = 1, 10, 53, !  31,    30,
+ j_parent_start                      = 1, 10, 114, !  17,    30,
+ parent_grid_ratio                   = 1, 3, 3,
+ parent_time_step_ratio              = 1, 2, 3,
+ feedback                            = 1,
+ smooth_option                       = 1
+ /
+
+ &physics
+ mp_physics                          = 108, 108, 108,
+ wisotope                            = .true., 
+ ra_lw_physics                       = 4,  4,   4, 
+ ra_sw_physics                       = 4,  4,   4, 
+ radt                                = 15, 15, 15,
+ sf_sfclay_physics                   = 2,  2, 2,
+ sf_surface_physics                  = 2,  2,  2,
+ bl_pbl_physics                      = 2,  2,  2,
+ bldt                                = 0,  0,  0,
+ cu_physics                          = 0,  0,  0,
+ cudt                                = 0,  0,  0,
+ isfflx                              = 1,
+ ifsnow                              = 0,
+ icloud                              = 1,
+ surface_input_source                = 1,
+ num_soil_layers                     = 4,
+ sf_urban_physics                    = 0,
+ mp_zero_out                         = 0,
+ maxiens                             = 1,
+ maxens                              = 3,
+ maxens2                             = 3,
+ maxens3                             = 16,
+ ensdim                              = 144,
+ slope_rad                           = 0,
+ topo_shading                        = 0,
+ fractional_seaice = 1, !polar WRF recommendations here and below
+ sst_update        = 1,
+ SEAICE_THICKNESS_OPT = 1,
+ SEAICE_THICKNESS_DEFAULT = 3.,
+ SEAICE_SNOWDEPTH_OPT = 1,
+ SEAICE_SNOWDEPTH_MAX = 1.0,
+ SEAICE_SNOWDEPTH_MIN = 0.001,
+ SEAICE_ALBEDO_OPT = 0,
+ SEAICE_ALBEDO_DEFAULT = 0.82
+ /
+
+ &fdda
+    grid_fdda = 2, 2, 0,
+    gfdda_inname = "wrffdda_d<domain>",
+    gfdda_interval_m = 360, 360, 360,
+    gfdda_end_h = 1000, 1000, 1000,
+    io_form_gfdda = 2,
+    fgdt = 0, 0, 0,
+    fgdtzero = 0, 0, 0,
+    if_no_pbl_nudging_uv = 1, 1, 1,
+    if_no_pbl_nudging_t = 1, 1, 1,
+    if_no_pbl_nudging_ph = 1, 1, 1,
+    guv = 3.e-4, 3.e-4, 0.0,
+    gt = 3.e-4, 3.e-4, 0.0,
+    gph = 3.e-4, 3.e-4, 0.0,
+    xwavenum = 10, 10, 10,
+    ywavenum = 12, 12, 12,
+    if_ramping = 0
+    dtramp_min = 60.0
+ /
+
+ &dynamics
+ w_damping                           = 0,
+ diff_opt                            = 1,      1,      1,
+ km_opt                              = 4,      4,      4,
+ diff_6th_opt                        = 0,      0,      0,
+ diff_6th_factor                     = 0.12,   0.12,   0.12,
+ base_temp                           = 290.
+ damp_opt                            = 3, !damp waves near top boundary
+ zdamp                               = 7.e3,  7.e3, 7.e3 ! 5000.,
+ dampcoef                            = 0.2,    0.2,   0.2
+ khdif                               = 0,      0,      0,
+ kvdif                               = 0,      0,      0,
+ non_hydrostatic                     = .true., .true., .true.,
+ moist_adv_opt                       = 1,      1,      1, !    
+ scalar_adv_opt                      = 1,      1,      1,     
+ gwd_opt                             = 0,
+ /
+
+ &bdy_control
+ spec_bdy_width                      = 10, ! 5,
+ spec_zone                           = 1,
+ relax_zone                          = 9, ! 4,
+ spec_exp                            = 0.33, 
+ specified                           = .true., .false., .false.,
+ nested                              = .false., .true., .true.,
+ /
+
+ &grib2
+ /
+
+ &namelist_quilt
+ nio_tasks_per_group = 0,
+ nio_groups = 1,
+ /
