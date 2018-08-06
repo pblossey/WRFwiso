@@ -278,11 +278,18 @@
       REAL:: t1_qs_sd, t2_qs_sd, t1_qg_sd, t2_qg_sd
       REAL:: t1_qs_me, t2_qs_me, t1_qg_me, t2_qg_me
       CHARACTER*256:: mp_debug
+#ifdef CHEYENNE
 !bloss(2017-05-16): Lookup table filenames for single and double precision
+      CHARACTER*256:: lookup_table_fname_single = &
+           '/glade/work/pblossey/data/thompson_lookup_tables_r1_single.bin'
+      CHARACTER*256:: lookup_table_fname_double = &
+           '/glade/work/pblossey/data/thompson_lookup_tables_r1_double.bin'
+#else
       CHARACTER*256:: lookup_table_fname_single = &
            '/home/disk/eos1/bloss/data/thompson_lookup_tables_r1_single.bin'
       CHARACTER*256:: lookup_table_fname_double = &
            '/home/disk/eos1/bloss/data/thompson_lookup_tables_r1_double.bin'
+#endif
 !+---+
 !+---+-----------------------------------------------------------------+
 !..END DECLARATIONS
