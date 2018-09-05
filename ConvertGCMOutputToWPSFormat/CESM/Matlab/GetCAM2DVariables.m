@@ -22,7 +22,7 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
   cam.wh2D = {{'PS',        'PSFC     ',200100}, ...
               {'PSL',       'PMSL     ',201300}, ...
               {'LANDFRAC',  'LANDSEA  ',200100}, ...
-              {'ICEFRAC',   'SEAICE   ',200100}, ...
+              {'OCNFRAC',   'OCNFRAC  ',200100}, ...
               {'TS',        'SKINTEMP ',200100}, ...
               {'TREFHT',    'TT       ',200100}, ...
               {'QREFHT',    'RH       ',200100}, ...
@@ -154,12 +154,18 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
     vinfo.Attributes(ii).Value = ncreadatt(cam.nc,CAMname,'long_name');
     ii = ii + 1;
 
+    vinfo.Attributes(ii).Name = 'missing_value';
+    vinfo.Attributes(ii).Value = -1.e30; %ncreadatt(cam.nc,CAMname,'long_name');
+    ii = ii + 1;
+
     ncwriteschema(ncWPS,vinfo);
 
     % fill in the value for each variable.
     %   Note that each slab of output is a separate variable in the
     %   netcdf file, whether it comes from a 2D or 3D output in CESM.
-    disp(sprintf('Writing %s to %s',vname,ncWPS))
+    if ~cam.quiet 
+      disp(sprintf('Writing %s to %s',vname,ncWPS))
+    end
     ncwrite(ncWPS,vname,value)
   end
 

@@ -17,8 +17,9 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
   %  require a bit of computation.
   
   %            CAM name    WPS name     WPS level
-  cam.wh2D = {{'hs','SNOWSI   ',200100}, ... % Snow depth on sea ice
-              {'hi','ICEDEPTH ',200100}, ... % Sea ice depth
+  cam.wh2D = {{'aice','SIFRAC   ',200100}, ... % sea ice fraction
+              {'hs'  ,'WGTSNOWSI',200100}, ... % Snow depth on sea ice
+              {'hi'  ,'WGTSIDPTH',200100}, ... % Sea ice depth
               };
 
   nout = 0;
@@ -45,6 +46,12 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
       case {'hi'}
        units_txt = 'm';
        desc_txt = 'Sea ice depth';
+      case {'aice'}
+       units_txt = '';
+       desc_txt = 'Sea ice fraction';
+
+       % convert from percent to fraction!!
+       value = value/100;
     end
 
     if ~isempty(find(isnan(value)))
@@ -87,12 +94,18 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
     vinfo.Attributes(ii).Value = desc_txt; %ncreadatt(cam.nc,CAMname,'long_name');
     ii = ii + 1;
 
+    vinfo.Attributes(ii).Name = 'missing_value';
+    vinfo.Attributes(ii).Value = -1.e30; %ncreadatt(cam.nc,CAMname,'long_name');
+    ii = ii + 1;
+
     ncwriteschema(ncWPS,vinfo);
 
     % fill in the value for each variable.
     %   Note that each slab of output is a separate variable in the
     %   netcdf file, whether it comes from a 2D or 3D output in CESM.
-    disp(sprintf('Writing %s to %s',vname,ncWPS))
+    if ~cam.quiet 
+      disp(sprintf('Writing %s to %s',vname,ncWPS))
+    end
     ncwrite(ncWPS,vname,value)
   end
 

@@ -101,7 +101,9 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
     % fill in the value for each variable.
     %   Note that each slab of output is a separate variable in the
     %   netcdf file, whether it comes from a 2D or 3D output in CESM.
-    disp(sprintf('Writing %s to %s',vname,ncWPS))
+    if ~cam.quiet 
+      disp(sprintf('Writing %s to %s',vname,ncWPS))
+    end
     ncwrite(ncWPS,vname,value)
   end
 

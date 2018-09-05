@@ -1,3 +1,5 @@
+function [] = CESM2WPSNetcdf(model,runtag,cam_h1_filename);
+
 % CESM2WPSNetcdf.m: This script is intended to take CESM output
 %   from the .cam.h*, .clm.h* and .cice.h* netcdf output files
 %   and generate netcdf files for each output time that contain
@@ -8,13 +10,15 @@
 %
 %  Author: Peter Blossey (pblossey@uw.edu), November 2017
 
+tic
+
+cam.quiet = true;
+
 pres_list = 100* [ 2001 1000:-25:900 850:-50:100 70 50 30 20 10 5];
 %% Added 200100 for surface properties.  
 %  num_metgrid_levels = 28
 
-model = 'CESM';
-tag = 'amip06a';
-cam.nc = 'GCMOutput/amip06a.cam.h1.2007-05-26-00000.nc';
+cam.nc = sprintf('GCMOutput/%s',cam_h1_filename);
 
 caminfo = ncinfo(cam.nc);
 whdim = {'time','lon','lat','lev','date','datesec'};
@@ -26,7 +30,7 @@ end
 
 % loop through the times in the CAM file and generate a separate
 %    WPS-ready netcdf file for each time.
-for itime = 1:5 %cam.Ndate
+for itime = 1:cam.Ndate
 
   % format the time/date for WPS
   tmp = cam.date(itime);
@@ -46,33 +50,50 @@ for itime = 1:5 %cam.Ndate
   ncfname = sprintf('../../Output/%s.nc',hdate);
   ncwriteschema(ncfname,ncout);
 
-  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',tag);
-  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',tag);
-  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',tag);
+  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',runtag);
+  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',runtag);
+  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',runtag);
 
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
+  tic
   n2D = GetCAM2DVariables(ncfname,cam,itime,hdate);
+  disp('CAM2D')
+  toc
 
   % now extract slabs from 3D fields, each interpolated to a given
   % set of pressure levels.  Save these WPS-ready slabs to ncfname
+  tic
   n3D = GetCAM3DVariables(ncfname,cam,itime,hdate,pres_list);
+  disp('CAM3D')
+  toc
 
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
+  tic
   land2D = GetCLM2DVariables(ncfname,cam,itime,hdate);
+  disp('CLM2D')
+  toc
 
   %   extract soil moisture/soil temperature fields from CLM output
   %   and save WPS-ready versions in the new netcdf file: ncfname.
   soil_depths = [0 0.1 0.4 1.0 2.0]; % edges of NOAH soil layers in meters
                                      %  num_metgrid_soil_levels = 4
 
+  tic
   land3D = GetCLM3DVariables(ncfname,cam,itime,hdate,soil_depths);
+  disp('CLM3D')
+  toc
 
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
+  tic
   ice2D = GetCICE2DVariables(ncfname,cam,itime,hdate);
+  disp('CICE2D')
+  toc
 
 % $$$   if itime > 20; error('stop here'); end
 
 end % itime = 1:cam.Ntime
+
+toc
