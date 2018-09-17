@@ -48,6 +48,10 @@ for m = 1:length(cam.wh3D)
       double(ncread(cam.nc,CAMname,start,count)), [3 1 2]);
 end
 
+% compute deltas for isotopes.
+tmp.deltaD = 1000*(tmp.HDOV./tmp.Q - 1);
+tmp.deltaO18 = 1000*(tmp.H218OV./tmp.Q - 1);
+
 % now go through the fields and interpolate onto the pressures in pres_list
 nout = 0;
 for m = 1:length(cam.wh3D)
@@ -88,14 +92,11 @@ for m = 1:length(cam.wh3D)
       for ilon = 1:cam.Nlon
         tmp_pres(1) = PS(ilon,ilat);
 
-        XX = interp1(pres(:,ilon,ilat),tmp.HDOV(:,ilon,ilat), ...
+        DD = interp1(pres(:,ilon,ilat),tmp.deltaD(:,ilon,ilat), ...
                      tmp_pres,'linear', ...
-                     tmp.HDOV(end,ilon,ilat) );
-        QQ = interp1(pres(:,ilon,ilat),tmp.Q(:,ilon,ilat), ...
-                     tmp_pres,'linear', ...
-                     tmp.Q(end,ilon,ilat) ); 
+                     tmp.deltaD(end,ilon,ilat) ); 
 
-        value3D(:,ilon,ilat) = 1000.*(XX./QQ - 1);
+        value3D(:,ilon,ilat) = DD;
       end
     end
 
@@ -108,14 +109,11 @@ for m = 1:length(cam.wh3D)
       for ilon = 1:cam.Nlon
         tmp_pres(1) = PS(ilon,ilat);
 
-        XX = interp1(pres(:,ilon,ilat),tmp.H218OV(:,ilon,ilat), ...
+        DD = interp1(pres(:,ilon,ilat),tmp.deltaO18(:,ilon,ilat), ...
                      tmp_pres,'linear', ...
-                     tmp.H218OV(end,ilon,ilat) );
-        QQ = interp1(pres(:,ilon,ilat),tmp.Q(:,ilon,ilat), ...
-                     tmp_pres,'linear', ...
-                     tmp.Q(end,ilon,ilat) ); 
+                     tmp.deltaO18(end,ilon,ilat) );
 
-        value3D(:,ilon,ilat) = 1000.*(XX./QQ - 1);
+        value3D(:,ilon,ilat) = DD;
       end
     end
 
