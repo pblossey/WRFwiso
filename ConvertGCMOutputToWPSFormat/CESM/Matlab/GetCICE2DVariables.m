@@ -1,6 +1,6 @@
-function [nout] = GetCICE2DVariables(ncWPS,cam,itime,hdate)
+function [nout] = GetCICE2DVariables(ncWPS,cam,cice,itime,hdate)
 
-% function [] = GetCLM2DVariables(ncWPS,cam,itime,hdate)
+% function [] = GetCLM2DVariables(ncWPS,cam,cice,itime,hdate)
 %
 %   reads a couple of 2D variables from CLM climatology netcdf files 
 %   and adds them to a specially-formatted netcdf file that
@@ -9,8 +9,18 @@ function [nout] = GetCICE2DVariables(ncWPS,cam,itime,hdate)
 %
 %   The input, cam, is a structure holding useful information about
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
+%
+%   The input, cice, is a structure holding monthly climatologies of 
+%   CICE outputs
 
 tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+% figure out where this time lies in the climatology and compute
+% interpolation weights, so that the value of a climatology at time tt_climo should be
+%   w1*f(i1) + w2*f(i1+1);
+i1 = max(find(cice.time<tt_climo));
+w1 = (cice.time(i1+1)-tt_climo)/diff(cice.time(i1:i1+1));
+w2 = 1 - w1;
+
 
   %  Get a list of 2D fields from CAM to be output.
   %  Some of these are easily translated for WPS.  Others will
@@ -30,14 +40,8 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
     WPSname = cam.wh2D{m}{2};
     xlvl = cam.wh2D{m}{3};
 
-    start = [1 1 1]; %  Only one time in the monthly-mean output
-                     %  files from CLM and CICE
-    count = [cam.Nlon cam.Nlat 1];
-    value = double(ncread(cam.nc_cice_h0,CAMname)); %,start,count));
-
-    % interpolate the climatology to the current day of the year.
-    time = double(ncread(cam.nc_cice_h0,'time'));
-    value = squeeze(interp1(time,permute(value,[3 1 2]),tt_climo,'linear'));
+    % interpolate the climatology to the current time
+    value = squeeze(w1*cice.(CAMname)(i1,:,:) + w2*cice.(CAMname)(i1+1,:,:));
 
     switch CAMname
       case {'hs'}

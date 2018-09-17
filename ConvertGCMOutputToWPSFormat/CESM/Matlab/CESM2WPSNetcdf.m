@@ -28,6 +28,24 @@ for m = 1:length(whdim)
   cam.(vname) = length(cam.(whdim{m}));
 end
 
+% coordinates
+cam.lat = double(ncread(cam.nc,'lat'));
+cam.lon = double(ncread(cam.nc,'lon'));
+
+% monthly climatologies for CAM, CLM, CICE
+cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',runtag);
+cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',runtag);
+cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',runtag);
+
+%   extract soil moisture/soil temperature climatologies from CLM output
+soil_depths = [0 0.1 0.4 1.0 2.0]; % edges of NOAH soil layers in meters
+                                   %  num_metgrid_soil_levels = 4
+
+clm = GetCLMClimatologies(cam,soil_depths);
+
+%   extract sea ice climatologies from CICE output
+cice = GetCICEClimatologies(cam);
+
 % loop through the times in the CAM file and generate a separate
 %    WPS-ready netcdf file for each time.
 for itime = 1:cam.Ndate
@@ -42,18 +60,14 @@ for itime = 1:cam.Ndate
                          yyyy,mm,dd,hh);
   disp(hdate)
 
-  cam.lat = double(ncread(cam.nc,'lat'));
-  cam.lon = double(ncread(cam.nc,'lon'));
-
   % set up netcdf file with attributes.  Add variables later
   ncout = CreateCESMFiniteVolumeNetcdfSchema(model,hdate,cam.lon,cam.lat);
   ncfname = sprintf('../../Output/%s.nc',hdate);
   ncwriteschema(ncfname,ncout);
 
-  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',runtag);
-  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',runtag);
-  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',runtag);
-
+  cam.ncfname{itime} = ncfname;
+  cam.hdate{itime} = hdate;
+  
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
   tic
@@ -71,7 +85,7 @@ for itime = 1:cam.Ndate
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
   tic
-  land2D = GetCLM2DVariables(ncfname,cam,itime,hdate);
+  land2D = GetCLM2DVariables(ncfname,cam,clm,itime,hdate);
   disp('CLM2D')
   toc
 
@@ -81,19 +95,23 @@ for itime = 1:cam.Ndate
                                      %  num_metgrid_soil_levels = 4
 
   tic
-  land3D = GetCLM3DVariables(ncfname,cam,itime,hdate,soil_depths);
+  land3D = GetCLM3DVariables(ncfname,cam,clm,itime,hdate,soil_depths);
   disp('CLM3D')
   toc
 
   %   extract 2D fields and save WPS-ready versions in the new
   %   netcdf file: ncfname.
   tic
-  ice2D = GetCICE2DVariables(ncfname,cam,itime,hdate);
+  ice2D = GetCICE2DVariables(ncfname,cam,cice,itime,hdate);
   disp('CICE2D')
   toc
 
 % $$$   if itime > 20; error('stop here'); end
 
 end % itime = 1:cam.Ntime
+
+
+
+
 
 toc

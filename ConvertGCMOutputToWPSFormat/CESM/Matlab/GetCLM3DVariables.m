@@ -1,4 +1,4 @@
-function [nout] = GetCLM3DVariables(ncWPS,cam,itime,hdate,soil_depths)
+function [nout] = GetCLM3DVariables(ncWPS,cam,clm,itime,hdate,soil_depths)
 
 % function [] = GetCLM3DVariables(ncWPS,cam,itime,hdate,soil_depths)
 %
@@ -9,61 +9,22 @@ function [nout] = GetCLM3DVariables(ncWPS,cam,itime,hdate,soil_depths)
 %
 %   The input, cam, is a structure holding useful information about
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
+%
+%   The input, clm, is a structure holding monthly climatologies of
+%   CLM variables.
 
-tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
-
-clear tmp
-tmp.levgrnd = double(ncread(cam.nc_clm_h0,'levgrnd'));    
-Nlevgrnd = length(tmp.levgrnd);
-
-time = double(ncread(cam.nc_clm_h0,'time'));
-
-start = [1 1 1 1]; %  Only one time in the monthly-mean output
-                   %  files from CLM and CICE
-count = [cam.Nlon cam.Nlat Nlevgrnd 1];
-wh = {'TSOI','H2OSOI','TSOI_ICE'};
-for k = 1:length(wh)
-  tmp.(wh{k}) = squeeze(interp1(time, ...
-                                permute(double(ncread(cam.nc_clm_h0,wh{k})),[4 1 2 3]), ...
-                                tt_climo,'linear')); %,start,count));
-end
-
-% interface depths for GCM soil levels
-tmp.levgrndi = [0; ...
-                sqrt(tmp.levgrnd(1:end-1).*tmp.levgrnd(2:end)); ...
-                1.5*tmp.levgrnd(end) - 0.5*tmp.levgrnd(end-1)];
-
-
+% # of WRF soil depths
 Ndepth = length(soil_depths)-1;
 
-tmp.ST = zeros(cam.Nlon,cam.Nlat,Ndepth);
-tmp.STICE = zeros(cam.Nlon,cam.Nlat,Ndepth);
-tmp.SM = zeros(cam.Nlon,cam.Nlat,Ndepth);
+tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of
+                                                           % year                                   
 
-for k = 1:Ndepth
-  htop = soil_depths(k);
-  hbot = soil_depths(k+1);
-
-  tmp.wgt = zeros(size(tmp.levgrnd));
-  for ilev = 1:Nlevgrnd
-    tmp.wgt(ilev) = max( 0, ...
-                         min( [tmp.levgrndi(ilev+1) - tmp.levgrndi(ilev); ...
-                        hbot - tmp.levgrndi(ilev); ...
-                        tmp.levgrndi(ilev+1) - htop] ) );
-    tmp.ST(:,:,k)= tmp.ST(:,:,k) + tmp.wgt(ilev)*tmp.TSOI(:,:,ilev);
-    tmp.STICE(:,:,k) = tmp.STICE(:,:,k) + tmp.wgt(ilev)*tmp.TSOI_ICE(:,:,ilev);
-    tmp.SM(:,:,k)= tmp.SM(:,:,k) + tmp.wgt(ilev)*tmp.H2OSOI(:,:,ilev);
-  end
-
-  tmp.ST(:,:,k) = tmp.ST(:,:,k)./sum(tmp.wgt);
-  tmp.STICE(:,:,k) = tmp.STICE(:,:,k)./sum(tmp.wgt);
-  tmp.SM(:,:,k) = tmp.SM(:,:,k)./sum(tmp.wgt);
-
-end
-
-% fill in missing values in TSOI with TSOI_ICE
-nanind = find(isnan(tmp.ST)); 
-tmp.ST(nanind) = tmp.STICE(nanind);
+% figure out where this time lies in the climatology and compute
+% interpolation weights, so that the value of a climatology at time tt_climo should be
+%   w1*f(i1) + w2*f(i1+1);
+i1 = max(find(clm.time<tt_climo));
+w1 = (clm.time(i1+1)-tt_climo)/diff(clm.time(i1:i1+1));
+w2 = 1 - w1;
 
 %%% convert CLM soil moisture in m3/m3 to kg/m3 for WPS
 %%tmp.SM = 1e3*tmp.SM;
@@ -100,7 +61,8 @@ for m = 1:length(cam.wh2D)
     desc_txt = sprintf('%s for the %.3d-%.3d cm depth layer', ...
                        cam.wh2D{m}{4},round(100*soil_depths(k:k+1)));
 
-    value = tmp.(cam.wh2D{m}{1})(:,:,k);
+    vv = (cam.wh2D{m}{1});
+    value = squeeze(w1*clm.(vv)(i1,:,:,k) + w2*clm.(vv)(i1+1,:,:,k));
 
     if ~isempty(find(isnan(value)))
       disp(sprintf('%d locations for %s are unfilled',length(find(isnan(value))),WPSname))

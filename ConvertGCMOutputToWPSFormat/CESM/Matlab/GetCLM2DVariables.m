@@ -1,6 +1,6 @@
-function [nout] = GetCLM2DVariables(ncWPS,cam,itime,hdate)
+function [nout] = GetCLM2DVariables(ncWPS,cam,clm,itime,hdate)
 
-% function [] = GetCLM2DVariables(ncWPS,cam,itime,hdate)
+% function [] = GetCLM2DVariables(ncWPS,cam,clm,itime,hdate)
 %
 %   reads a couple of 2D variables from CLM climatology netcdf files 
 %   and adds them to a specially-formatted netcdf file that
@@ -9,8 +9,18 @@ function [nout] = GetCLM2DVariables(ncWPS,cam,itime,hdate)
 %
 %   The input, cam, is a structure holding useful information about
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
+%
+%   The input, clm, is a structure holding monthly climatologies of 
+%   CLM outputs
 
-tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
+
+% figure out where this time lies in the climatology and compute
+% interpolation weights, so that the value of a climatology at time tt_climo should be
+%   w1*f(i1) + w2*f(i1+1);
+i1 = max(find(clm.time<tt_climo));
+w1 = (clm.time(i1+1)-tt_climo)/diff(clm.time(i1:i1+1));
+w2 = 1 - w1;
 
   %  Get a list of 2D fields from CAM to be output.
   %  Some of these are easily translated for WPS.  Others will
@@ -29,31 +39,24 @@ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year
     WPSname = cam.wh2D{m}{2};
     xlvl = cam.wh2D{m}{3};
 
-    start = [1 1 1]; %  Only one time in the monthly-mean output
-                     %  files from CLM and CICE
-    count = [cam.Nlon cam.Nlat 1];
-    var_in = double(ncread(cam.nc_clm_h0,CAMname)); %,start,count));
-
     switch CAMname
       case {'SNOWLIQ'}
        % combine SNOWLIQ and SNOWICE to give total snow water
        % equivalent in kg/m2
-       value = double(ncread(cam.nc_clm_h0,'SNOWLIQ')) ... %,start,count)) ...
-               + double(ncread(cam.nc_clm_h0,'SNOWICE')); %,start,count));
+       value = squeeze(w1*clm.SNOWLIQ(i1,:,:) + w2*clm.SNOWLIQ(i1+1,:,:) ...
+                            + w1*clm.SNOWICE(i1,:,:) + w2*clm.SNOWICE(i1+1,:,:));
 
        units_txt = 'kg/m2';
        desc_txt = 'Snow water equivalent';
        
       case {'SNOWDP'}
        % WPS's SNOWH == CAM's SNOWDP, with both in meters
-       value = var_in;
+       value = squeeze(w1*clm.SNOWDP(i1,:,:) + w2*clm.SNOWDP(i1+1,:,:));
 
        units_txt = 'm';
        desc_txt = 'Snow depth';
     end
 
-    time = double(ncread(cam.nc_clm_h0,'time'));
-    value = squeeze(interp1(time,permute(value,[3 1 2]),tt_climo,'linear'));
 
     if ~isempty(find(isnan(value)))
       disp(sprintf('%d locations for %s are unfilled',length(find(isnan(value))),CAMname))
