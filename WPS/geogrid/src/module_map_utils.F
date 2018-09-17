@@ -805,14 +805,18 @@ MODULE map_utils
       ELSE
          gi2 = (proj%rebydx * scale_top)**2.
          lat = deg_per_rad * proj%hemi * ASIN((gi2-r2)/(gi2+r2))
-         arccos = ACOS(xx/SQRT(r2))
-         IF (yy .GT. 0) THEN
-            lon = reflon + deg_per_rad * arccos
-         ELSE
-            lon = reflon - deg_per_rad * arccos
-         ENDIF
+!bloss         arccos = ACOS(xx/SQRT(r2))
+!bloss         IF (yy .GT. 0) THEN
+!bloss            lon = reflon + deg_per_rad * arccos
+!bloss         ELSE
+!bloss            lon = reflon - deg_per_rad * arccos
+!bloss         ENDIF
+         
+         !bloss: Use ATAN2 to avoid issues with undefined longitudes
+         !   near 90E, 90W in high resolution grids near pole
+         lon = reflon + deg_per_rad * atan2(yy,xx)
       ENDIF
-    
+      
       ! Convert to a -180 -> 180 East convention
       IF (lon .GT. 180.) lon = lon - 360.
       IF (lon .LT. -180.) lon = lon + 360.
