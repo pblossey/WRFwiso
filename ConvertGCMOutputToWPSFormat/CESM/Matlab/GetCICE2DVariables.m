@@ -30,6 +30,9 @@ w2 = 1 - w1;
   cam.wh2D = {{'aice','SIFRAC   ',200100}, ... % sea ice fraction
               {'hs'  ,'WGTSNOWSI',200100}, ... % Snow depth on sea ice
               {'hi'  ,'WGTSIDPTH',200100}, ... % Sea ice depth
+              {'aice','SEAICE   ',200100}, ... % sea ice fraction
+              {'hs'  ,'SNOWSI   ',200100}, ... % Snow depth on sea ice
+              {'hi'  ,'ICEDEPTH ',200100}, ... % Sea ice depth
               };
 
   nout = 0;
