@@ -46,6 +46,8 @@ ln -s ../../PWRF3.9.1/dyn_em/module_big_step_utilities_em.F.PWRF3.9.1 module_big
 ln -s ../../PWRF3.9.1/dyn_em/module_initialize_real.F.PWRF3.9.1 module_initialize_real.F
 popd
 
+popd
+
 # next, make changes in WPS to metgrid and geogrid tables.
 pushd WPS/
 
