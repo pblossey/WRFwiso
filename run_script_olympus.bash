@@ -42,6 +42,10 @@ ln -sf ../ConvertGCMOutputToWPSFormat/Output/CESM* .
 #   we do not need to play these games with the LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
 
+# Use the Antarctica namelist
+rm -f namelist.wps
+cp -f namelist.wps.Antarctica.45km15km5km namelist.wps
+
 # run metgrid
 nice ./metgrid.exe &> log.metgrid 
 
@@ -67,6 +71,10 @@ pushd WRFV3/test/em_real/
 # set up netcdf library path for real.exe
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
 
-nice ./real.exe &> log.real
+# Use the Antarctica namelist
+rm -f namelist.wps
+cp -f namelist.input.AntarcticaWISO.45km15km5km namelist.input
+
+mpirun  -mca btl tcp,self -np 1 ./real.exe &> log.real
 
 popd
