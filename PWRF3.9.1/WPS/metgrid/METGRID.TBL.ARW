@@ -120,14 +120,42 @@ name=XICE ; output_name=SEAICE  # If we get XICE, use entry from SEAICE and
                                 #   write the field out as SEAICE
 ========================================
 name=SEAICE 
-        interp_option=four_pt+average_4pt
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=OCNFRAC  #bloss: Added to handle sea ice fraction near coasts
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=SIFRAC   #bloss: Added to handle sea ice fraction near coasts
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=WGTSNOWSI  #bloss: Added to properly import snow on sea ice from CESM.
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=WGTSIDPTH  #bloss: Added to properly import sea ice depth from CESM.
+        interp_option=four_pt+wt_average_4pt+search
         interp_mask=LANDSEA(1) 
         masked=land
         missing_value=-1.E30
         fill_missing=0.
 ========================================
 name=ICEDEPTH
-        interp_option=four_pt+average_4pt
+        interp_option=four_pt+wt_average_4pt
         interp_mask=LANDSEA(1)
         masked=land
         missing_value=-1.E30
@@ -135,7 +163,7 @@ name=ICEDEPTH
         flag_in_output=FLAG_ICEDEPTH
 ========================================
 name=SNOWSI
-        interp_option=four_pt+average_4pt
+        interp_option=four_pt+wt_average_4pt
         interp_mask=LANDSEA(1)
         masked=land
         missing_value=-1.E30
