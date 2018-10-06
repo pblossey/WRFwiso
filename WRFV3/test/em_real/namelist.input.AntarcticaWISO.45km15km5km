@@ -28,7 +28,7 @@
  debug_level                         = 0
 
 io_form_auxinput4    = 2
-auxinput4_inname     = "wflowinp_d<domain>"
+auxinput4_inname     = "wrflowinp_d<domain>"
 auxinput4_interval   = 360, 360, 360,
  /
 
@@ -42,7 +42,7 @@ auxinput4_interval   = 360, 360, 360,
  time_step                           = 90,
  time_step_fract_num                 = 0,
  time_step_fract_den                 = 1,
- max_dom                             = 3,
+ max_dom                             = 2,
  e_we                                = 210, 382, 700,
  e_sn                                = 220, 358, 700,
  e_vert                              = 51,  51, 51,
@@ -89,12 +89,12 @@ auxinput4_interval   = 360, 360, 360,
  topo_shading                        = 0,
  fractional_seaice = 1, !polar WRF recommendations here and below
  sst_update        = 1,
- SEAICE_THICKNESS_OPT = 1,
+ SEAICE_THICKNESS_OPT = 0,
  SEAICE_THICKNESS_DEFAULT = 1.,
  SEAICE_SNOWDEPTH_OPT = 1,
  SEAICE_SNOWDEPTH_MAX = 1.0,
  SEAICE_SNOWDEPTH_MIN = 0.001,
- SEAICE_ALBEDO_OPT = 0,
+ SEAICE_ALBEDO_OPT = 1,
  SEAICE_ALBEDO_DEFAULT = 0.82
  /
 
