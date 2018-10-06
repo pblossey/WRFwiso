@@ -40,7 +40,7 @@ ln -sf ../ConvertGCMOutputToWPSFormat/Output/CESM* .
 # set up netcdf library path for metgrid
 # TODO: set up configure.wps and configure.wrf with -Wl,-rpath so that
 #   we do not need to play these games with the LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
+#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
 
 # Use the Antarctica namelist
 rm -f namelist.wps
@@ -50,7 +50,7 @@ cp -f namelist.wps.Antarctica.45km15km5km namelist.wps
 nice ./metgrid.exe &> log.metgrid 
 
 # remove the netcdf path, so that nco will run properly
-export LD_LIBRARY_PATH=/usr/local/intel/composer_xe_2013.3.163/compiler/lib/intel64
+#export LD_LIBRARY_PATH=/usr/local/intel/composer_xe_2013.3.163/compiler/lib/intel64
 
 # recompute the sea ice, ice depth and snow-on-sea-ice amounts to
 #   translate from the CESM world where land, ocean and sea ice share
@@ -62,6 +62,7 @@ for file in `ls met_em*.nc`
    do 
     ncap2 -s "SEAICE=SIFRAC/(SIFRAC+OCNFRAC+1.e-12);ICEDEPTH=WGTSIDPTH/(SIFRAC+1.e-12);SNOWSI=WGTSNOWSI/(SIFRAC+1.e-12)" ${file} tmp.nc
      mv -f tmp.nc ${file}
+     ncatted -a FLAG_ICEDEPTH,global,c,i,1 -a FLAG_SNOWSI,global,c,i,1 ${file}
 done
 
 popd
@@ -69,11 +70,13 @@ popd
 pushd WRFV3/test/em_real/
 
 # set up netcdf library path for real.exe
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
+#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
 
 # Use the Antarctica namelist
-rm -f namelist.wps
+rm -f namelist.input
 cp -f namelist.input.AntarcticaWISO.45km15km5km namelist.input
+
+ln -sf ../WPS/met_em* .
 
 mpirun  -mca btl tcp,self -np 1 ./real.exe &> log.real
 
