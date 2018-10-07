@@ -1,16 +1,29 @@
 #!/bin/bash
+#PBS -N AntarcWISO_real
+#PBS -A UWAS0052
+#PBS -l walltime=12:00:00
+#PBS -q economy
+#PBS -j oe
+#PBS -m e
+#PBS -M pblossey@uw.edu
+#PBS -l select=1:ncpus=4:mpiprocs=1
 
 SYY=2007
 SMM=5
 SDD=26
 
 EYY=2007
-EMM=5
-EDD=27
+EMM=6
+EDD=24
+
+### Set TMPDIR as recommended
+export TMPDIR=/glade/scratch/$USER/temp
+mkdir -p $TMPDIR
+
+cd /glade/u/home/pblossey/scratch/WAIS/WRFwiso-2018-09-28/
 
 # load modules for intel/netcdf setup
-source /etc/profile.d/modules.sh
-module load intel/13.1.1 openmpi/1.6.4 netcdf/4.3.0
+module load matlab nco
 
 # clean up folder with WPS Intermediate format files from CESM
 pushd ConvertGCMOutputToWPSFormat
@@ -46,20 +59,13 @@ pushd WPS/
 rm -f CESM*
 ln -sf ../ConvertGCMOutputToWPSFormat/Output/CESM* .
 
-# set up netcdf library path for metgrid
-# TODO: set up configure.wps and configure.wrf with -Wl,-rpath so that
-#   we do not need to play these games with the LD_LIBRARY_PATH
-#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
-
 # Use the Antarctica namelist
 rm -f namelist.wps
 cp -f namelist.wps.Antarctica.45km15km5km namelist.wps
 
 # run metgrid
-nice ./metgrid.exe &> log.metgrid 
-
-# remove the netcdf path, so that nco will run properly
-#export LD_LIBRARY_PATH=/usr/local/intel/composer_xe_2013.3.163/compiler/lib/intel64
+echo " ***** Running Metgrid ***** "
+nice ./metgrid.exe # &> log.metgrid 
 
 # recompute the sea ice, ice depth and snow-on-sea-ice amounts to
 #   translate from the CESM world where land, ocean and sea ice share
@@ -78,15 +84,11 @@ popd
 
 pushd WRFV3/test/em_real/
 
-# set up netcdf library path for real.exe
-#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/modules/netcdf/4.3.0/intel/13.1.1/lib
-
 # Use the Antarctica namelist
 rm -f namelist.input
 cp -f namelist.input.AntarcticaWISO.45km15km5km namelist.input
 
-ln -sf ../WPS/met_em* .
-
-mpirun  -mca btl tcp,self -np 1 ./real.exe &> log.real
+### Run the executable
+mpiexec_mpt dplace -s 1 ./real.exe > log_real_2018-09-28
 
 popd
