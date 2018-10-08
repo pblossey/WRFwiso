@@ -58,8 +58,12 @@ tic
     dd = floor(tmp - 1e2*mm - 1e4*yyyy);
     hh = round(cam.datesec(itime)/3600); 
 
-    if yyyy>= syy & mm>= smm& dd >= sdd ...
-              & yyyy<=eyy & mm<=emm & dd<=edd 
+sdate = 1e4*syy + 1e2*smm + sdd;
+edate = 1e4*eyy + 1e2*emm + edd;
+
+current_date = 1e4*yyyy + 1e2*mm + dd;
+
+    if current_date >= sdate & current_date <= edate
       % We are within the start/end dates, so process the CESM data!
 
       hdate = sprintf('%.4d-%.2d-%.2d_%.2d', ...
