@@ -7084,6 +7084,10 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
          DO i = ITS , ITE
             IF ( ( XICE(i,j) >= XICE_THRESHOLD ) .AND. ( XICE(I,J) <= 1.0 ) ) THEN
  
+#ifdef BPRC_MODS
+              SST_old = SST(i,j) !bloss(2018-10-30): Need to initialize SST_old
+#endif
+      
                IF ( SST(i,j) < 271.4 ) THEN
                   SST(i,j) = 271.4
                ENDIF
@@ -7130,8 +7134,10 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
                IF ( ( XICE(i,j) < 0.2 ) .AND. ( TSK_ICE(i,j) < 253.15 ) ) THEN
 #else
                IF ( ( XICE(i,j) < 0.2 ) .AND. ( TSK(i,j) < 253.15 ) ) THEN
-                  TSK_ICE(i,j) = 253.15
 #endif
+                  TSK_ICE(i,j) = 253.15
+!bloss(2018-10-30): I am guessing that this #endif should be moved up one line...
+!bloss  #endif
                ENDIF
 #ifdef BPRC_MODS
 ! bugfix very cold TSK_ICE
