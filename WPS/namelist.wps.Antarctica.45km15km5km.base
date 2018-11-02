@@ -1,0 +1,39 @@
+&share
+ wrf_core = 'ARW',
+ max_dom = NUM_DOMAINS,
+ start_date = 'SYY-SMM-SDD_00:00:00', 'SYY-SMM-SDD_00:00:00',  'SYY-SMM-SDD_00:00:00', 
+ end_date   = 'EYY-EMM-EDD_00:00:00', 'EYY-EMM-EDD_00:00:00',  'EYY-EMM-EDD_00:00:00', 
+ interval_seconds = 21600
+ io_form_geogrid = 2,
+ active_grid = .true., .true., .true.,
+ debug_level=0
+/
+
+&geogrid
+ parent_id =           1, 1, 2,
+ parent_grid_ratio =   1, 3, 3,
+ i_parent_start =      1,  47, 20,
+ j_parent_start =      1,  50, 20,
+ e_we           =    210, 382, 700,
+ e_sn           =    220, 358, 700,
+ geog_data_res  = 'default', 'default', 'default', 
+ dx = 45.e3
+ dy = 45.e3
+ map_proj = 'polar',
+ ref_lat   = -89.4
+ ref_lon   =   0.0
+ truelat1  = -71.0,
+ truelat2  = -91.0,
+ stand_lon =   0.
+ geog_data_path = './Data'
+/
+
+&ungrib
+ out_format = 'WPS',
+ prefix = 'FILE',
+/
+
+&metgrid
+ fg_name = 'CESM'
+ io_form_metgrid = 2, 
+/
