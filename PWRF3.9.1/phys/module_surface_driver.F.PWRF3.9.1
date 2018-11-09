@@ -29,6 +29,8 @@ CONTAINS
      &          ,wisotope                                             & !bloss/wiso
      &          ,hdo_qfx,hdo_qv,hdo_qz0,hdo_qsfc,r_hdo_surf,r_hdo_qfx & !bloss/wiso
      &          ,o18_qfx,o18_qv,o18_qz0,o18_qsfc,r_o18_surf,r_o18_qfx & !bloss/wiso
+     &          ,qfx_pos,hdo_qfx_pos,o18_qfx_pos                      & !bloss/wiso/qfx partition
+     &          ,qfx_neg,hdo_qfx_neg,o18_qfx_neg                      & !bloss/wiso/qfx partition
      &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff,acrunoff          &
      &          ,smois,smstav,smstot,snoalb,snow,snowc,snowh,stepbl   &
      &          ,smcrel                                               &
@@ -455,8 +457,14 @@ CONTAINS
 !-- SNOWC         flag indicating snow coverage (1 for snow cover)
 !-- HFX           net upward heat flux at the surface (W/m^2)
 !-- QFX           net upward moisture flux at the surface (kg/m^2/s)
-!-- HDO_QFX           net upward moisture flux at the surface (kg/m^2/s) !bloss/wiso
-!-- O18_QFX           net upward moisture flux at the surface (kg/m^2/s) !bloss/wiso
+!-- HDO_QFX           net upward HDO moisture flux at the surface (kg/m^2/s) !bloss/wiso
+!-- O18_QFX           net upward O18 moisture flux at the surface (kg/m^2/s) !bloss/wiso
+!-- QFX_POS           upward-only moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX_POS           net upward HDO moisture flux at the surface when QFX>0 (kg/m^2/s) !bloss/wiso
+!-- O18_QFX_POS           net upward O18 moisture flux at the surface when QFX>0(kg/m^2/s) !bloss/wiso
+!-- QFX_NEG           downward-only moisture flux at the surface (kg/m^2/s, negative means downward)
+!-- HDO_QFX_NEG           net upward moisture flux at the surface when QFX<0 (kg/m^2/s) !bloss/wiso
+!-- O18_QFX_NEG           net upward moisture flux at the surface when QFX<0 (kg/m^2/s) !bloss/wiso
 !-- WISOTOPE      LOGICAL flag, true if water isotopologues HDO and H218O are in use !bloss/wiso
 !-- TAUX          RHO*U**2 for ocean coupling
 !-- TAUY          RHO*U**2 for ocean coupling
@@ -690,6 +698,14 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(IN)::   R_O18_SURF !bloss/wiso: isotopic ratio (relative to SMOW) of surface waters for H218O
    REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(IN)::   R_HDO_QFX !bloss/wiso: isotopic ratio (relative to SMOW) of surface fluxes for HDO
    REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(IN)::   R_O18_QFX !bloss/wiso: isotopic ratio (relative to SMOW) of surface fluxes for H218O
+
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   QFX_POS     !bloss/wiso: upward-only surface moisture flux 
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   HDO_QFX_POS !bloss/wiso: net upward isotopic surface moisture flux for HDO when QFX>0
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   O18_QFX_POS !bloss/wiso: net upward isotopic surface moisture flux for O18 when QFX>0
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   QFX_NEG     !bloss/wiso: downward-only surface moisture flux 
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   HDO_QFX_NEG !bloss/wiso: net upward isotopic surface moisture flux for HDO when QFX<0
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT)::   O18_QFX_NEG !bloss/wiso: net upward isotopic surface moisture flux for O18 when QFX<0
+
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL, INTENT(INOUT) :: HDO_QV !bloss/wiso: water vapor mass mixing ratio of HDO (scaled by SMOW, so that HDO_QV==QV when deltaD==0)
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ), OPTIONAL, INTENT(INOUT) :: O18_QV !bloss/wiso: water vapor mass mixing ratio of H218O
    !bloss/wiso: isotopic quantities for MYJ surface scheme (2D arays)
@@ -2118,8 +2134,8 @@ CONTAINS
                 chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
                 u10,v10,t2,th2,tshltr,th10,q2,qshltr,q10,pshltr,               &
                 p1000mb,                                             &
-                hdo_qv,hdo_qz0,hdo_qsfc,hdo_qfx,r_hdo_surf,   & !bloss/wiso
-                o18_qv,o18_qz0,o18_qsfc,o18_qfx,r_o18_surf,   & !bloss/wiso
+                hdo_qv,hdo_qz0,hdo_qsfc,hdo_qfx,r_hdo_surf,r_hdo_qfx,   & !bloss/wiso (added r_hdo_qfx, 2018-11-07)
+                o18_qv,o18_qz0,o18_qsfc,o18_qfx,r_o18_surf,r_o18_qfx,   & !bloss/wiso (added r_o18_qfx, 2018-11-07)
                 HDO_QZ0_SEA,HDO_QSFC_SEA,HDO_QFX_SEA, & !bloss/wiso
                 O18_QZ0_SEA,O18_QSFC_SEA,O18_QFX_SEA, & !bloss/wiso
                 wisotope,                             & !bloss/wiso
@@ -2140,8 +2156,8 @@ CONTAINS
               chs,chs2,cqs2,hfx,qfx,lh,flhc,flqc,qgh,cpm,ct,       &
               u10,v10,t2,th2,tshltr,th10,q2,qshltr,q10,pshltr,               &
               p1000mb,                                             &
-              hdo_qv,hdo_qz0,hdo_qsfc,hdo_qfx,r_hdo_surf,  & !bloss/wiso
-              o18_qv,o18_qz0,o18_qsfc,o18_qfx,r_o18_surf,  & !bloss/wiso
+              hdo_qv,hdo_qz0,hdo_qsfc,hdo_qfx,r_hdo_surf,r_hdo_qfx,  & !bloss/wiso
+              o18_qv,o18_qz0,o18_qsfc,o18_qfx,r_o18_surf,r_o18_qfx,  & !bloss/wiso
               wisotope,                             & !bloss/wiso
               ids,ide, jds,jde, kds,kde,                           &
               ims,ime, jms,jme, kms,kme,                           &
@@ -2842,9 +2858,15 @@ CONTAINS
              DO i=i_start(ij),i_end(ij)
                IF( XLAND(I,J) .LT. 1.5) THEN ! land/sea ice point
                  !  Weighted average of fields between ice-cover values and open-water values.
-                 !  For isotopes, assume that qfx goes as R_HDO_QFX * QFX.  
-                 HDO_QFX(I,J) = R_HDO_QFX(I,J)*qfx(i,j)
-                 O18_QFX(I,J) = R_O18_QFX(I,J)*qfx(i,j)
+                  IF( QFX(I,J) .GE. 0.) THEN ! UPWARD MOISTURE FLUX
+                     !  For isotopes, assume that qfx goes as R_HDO_QFX * QFX.  
+                     HDO_QFX(I,J) = R_HDO_QFX(I,J)*qfx(i,j)
+                     O18_QFX(I,J) = R_O18_QFX(I,J)*qfx(i,j)
+                  ELSE
+                     ! Downward moisture flux -- assume isotopic content is same as lowest-level vapor
+                     HDO_QFX(I,J) = QFX(I,J)*HDO_QV(I,LOWLYR(I,J),J)/QV_CURR(I,LOWLYR(I,J),J)
+                     O18_QFX(I,J) = QFX(I,J)*O18_QV(I,LOWLYR(I,J),J)/QV_CURR(I,LOWLYR(I,J),J)
+                  END IF
 
                  ! now, derive the surface value based on the flux and the surface transfer coefficient
                  HDO_QSFC(I,J) = HDO_QV(I,LOWLYR(I,J),J) + HDO_QFX(I,J)/FLQC(I,J)
@@ -4315,6 +4337,49 @@ CONTAINS
 
    END IF
 
+   !bloss: partition the surface moisture flux into its positive and negative components
+      IF( PRESENT(QFX_POS) ) THEN
+         QFX_POS(:,:) = 0.
+         WHERE(QFX(:,:)>0.) 
+            QFX_POS(:,:) = QFX(:,:)
+         END WHERE
+
+         IF( PRESENT(HDO_QFX_POS) ) THEN
+            HDO_QFX_POS(:,:) = 0.
+            WHERE(QFX(:,:)>0.) 
+               HDO_QFX_POS(:,:) = HDO_QFX(:,:)
+            END WHERE
+         END IF
+
+         IF( PRESENT(O18_QFX_POS) ) THEN
+            O18_QFX_POS(:,:) = 0.
+            WHERE(QFX(:,:)>0.) 
+               O18_QFX_POS(:,:) = O18_QFX(:,:)
+            END WHERE
+         END IF
+      END IF
+
+      IF( PRESENT(QFX_NEG) ) THEN
+         QFX_NEG(:,:) = 0.
+         WHERE(QFX(:,:)<0.) 
+            QFX_NEG(:,:) = QFX(:,:)
+         END WHERE
+
+         IF( PRESENT(HDO_QFX_NEG) ) THEN
+            HDO_QFX_NEG(:,:) = 0.
+            WHERE(QFX(:,:)<0.) 
+               HDO_QFX_NEG(:,:) = HDO_QFX(:,:)
+            END WHERE
+         END IF
+
+         IF( PRESENT(O18_QFX_NEG) ) THEN
+            O18_QFX_NEG(:,:) = 0.
+            WHERE(QFX(:,:)<0.) 
+               O18_QFX_NEG(:,:) = O18_QFX(:,:)
+            END WHERE
+         END IF
+      END IF
+
    END SUBROUTINE surface_driver
 
 !-------------------------------------------------------------------------
@@ -4338,8 +4403,8 @@ CONTAINS
         &     QGH,CPM,CT,                                 &
         &     U10,V10,T02,TH02,TSHLTR,TH10,Q02,QSHLTR,Q10,PSHLTR,          &
         &     P1000,                                        &
-        &     HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF, & !bloss/wiso
-        &     O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF, & !bloss/wiso
+        &     HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF,R_HDO_QFX, & !bloss/wiso
+        &     O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF,R_O18_QFX, & !bloss/wiso
         &     HDO_QZ0_SEA,HDO_QSFC_SEA,HDO_QFX_SEA, & !bloss/wiso
         &     O18_QZ0_SEA,O18_QSFC_SEA,O18_QFX_SEA, & !bloss/wiso
         &     WISOTOPE,                                     & !bloss/wiso
@@ -4433,6 +4498,7 @@ CONTAINS
      !bloss/wiso: For surface flux treatment of water isotopologues
      REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(IN), OPTIONAL  :: HDO_QV, O18_QV !bloss/wiso
      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_SURF, R_O18_SURF !bloss/wiso
+     REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_QFX, R_O18_QFX !bloss/wiso (proxy for Rsurf over land/sea ice)
      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(INOUT), OPTIONAL :: HDO_QZ0, HDO_QSFC, HDO_QFX !bloss/wiso
      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(INOUT), OPTIONAL :: O18_QZ0, O18_QSFC, O18_QFX !bloss/wiso
      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(OUT), OPTIONAL :: HDO_QZ0_SEA, HDO_QSFC_SEA, HDO_QFX_SEA !bloss/wiso
@@ -4595,8 +4661,8 @@ CONTAINS
           &        TH02, TSHLTR, TH10, Q02,                        &  ! 0,0,0,0,
           &        QSHLTR, Q10, PSHLTR,                            &  ! 0,0,0,
           &        P1000,                                        &  ! I
-          &        HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF,     & !bloss/wiso
-          &        O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF,     & !bloss/wiso
+          &        HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF,R_HDO_QFX,     & !bloss/wiso
+          &        O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF,R_O18_QFX,     & !bloss/wiso
           &        WISOTOPE,                                       & !bloss/wiso
           &        ids,ide, jds,jde, kds,kde,                      &
           &        ims,ime, jms,jme, kms,kme,                      &
@@ -4666,8 +4732,8 @@ CONTAINS
           &        FLQC_SEA, QGH_SEA, CPM_SEA, CT_SEA, U10_SEA, V10_SEA, T02_SEA, TH02_SEA,    & ! 0,0,0,0,0,0,0,0,
           &        TSHLTR_SEA, TH10_SEA, Q02_SEA, QSHLTR_SEA, Q10_SEA, PSHLTR_SEA,             & ! 0,0,0,0,0,0,
           &        p1000,                                                                    & ! I
-          &        HDO_QV,HDO_QZ0_SEA,HDO_QSFC_SEA,HDO_QFX_SEA,R_HDO_SURF, & !bloss/wiso
-          &        O18_QV,O18_QZ0_SEA,O18_QSFC_SEA,O18_QFX_SEA,R_O18_SURF, & !bloss/wiso
+          &        HDO_QV,HDO_QZ0_SEA,HDO_QSFC_SEA,HDO_QFX_SEA,R_HDO_SURF,R_HDO_QFX, & !bloss/wiso
+          &        O18_QV,O18_QZ0_SEA,O18_QSFC_SEA,O18_QFX_SEA,R_O18_SURF,R_O18_QFX, & !bloss/wiso
           &        wisotope,                                                                    & ! bloss/wiso
           &        ids,ide, jds,jde, kds,kde,                                                  &
           &        ims,ime, jms,jme, kms,kme,                                                  &
