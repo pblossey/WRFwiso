@@ -87,6 +87,8 @@ CONTAINS
                  ,wisotope                        & !bloss/wiso
                  ,hdo_qfx,hdo_qz0,hdo_qsfc,r_hdo_surf        & !bloss/wiso
                  ,o18_qfx,o18_qz0,o18_qsfc,r_o18_surf        & !bloss/wiso
+                 ,qfx_pos,hdo_qfx_pos,o18_qfx_pos            & !bloss/wiso/qfx partition
+                 ,qfx_neg,hdo_qfx_neg,o18_qfx_neg            & !bloss/wiso/qfx partition
                  ,hdo_qv_curr, hdo_qc_curr, hdo_qi_curr            & ! HDO mixing ratio
                  ,rhdo_qvblten,rhdo_qcblten,rhdo_qiblten           & ! BL mixing tendency for HDO
                  ,f_hdo_qv,f_hdo_qc,f_hdo_qi                       & ! tracer flags
@@ -276,9 +278,15 @@ CONTAINS
 !-- THC           thermal inertia (Cal/cm/K/s^0.5)
 !-- SNOWC         flag indicating snow coverage (1 for snow cover)
 !-- HFX           upward heat flux at the surface (W/m^2)
-!-- QFX           upward moisture flux at the surface (kg/m^2/s)
-!-- HDO_QFX       upward flux of the water isotopologue HDO at the surface (kg/m^2/s, normalized by R_SMOW)
-!-- O18_QFX       upward flux of the water isotopologue H_2^18O at the surface (kg/m^2/s, normalized by R_SMOW)
+!-- QFX           net upward moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX       net upward flux of the water isotopologue HDO at the surface (kg/m^2/s, normalized by R_SMOW)
+!-- O18_QFX       net upward flux of the water isotopologue H_2^18O at the surface (kg/m^2/s, normalized by R_SMOW)
+!-- QFX_POS       upward-only moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX_POS   net upward flux of the water isotopologue HDO at the surface when QFX>0 (kg/m^2/s, normalized by R_SMOW)
+!-- O18_QFX_POS   net upward flux of the water isotopologue H_2^18O at the surface when QFX>0 (kg/m^2/s, normalized by R_SMOW)
+!-- QFX_NEG       downward-only moisture flux at the surface (kg/m^2/s)
+!-- HDO_QFX_NEG   net upward flux of the water isotopologue HDO at the surface when QFX<0 (kg/m^2/s, normalized by R_SMOW)
+!-- O18_QFX_NEG   net upward flux of the water isotopologue H_2^18O at the surface when QFX<0 (kg/m^2/s, normalized by R_SMOW)
 !-- HDO_QZ0       specific humidity of the water isotopologue HDO at ZNT (kg/kg, normalized by R_SMOW)
 !-- O18_QZ0       specific humidity of the water isotopologue H_2^18O at ZNT (kg/kg, normalized by R_SMOW)
 !-- HDO_QSFC      specific humidity of the water isotopologue HDO at the surface (kg/kg, normalized by R_SMOW)
@@ -704,6 +712,9 @@ CONTAINS
 
    REAL,       DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(IN)    :: & !bloss/wiso
                R_HDO_SURF, R_O18_SURF !bloss/wiso
+
+   REAL, DIMENSION( ims:ime, jms:jme ) , OPTIONAL, INTENT(INOUT):: &  !bloss/wiso/qfx partition
+               QFX_POS, HDO_QFX_POS, O18_QFX_POS, QFX_NEG, HDO_QFX_NEG, O18_QFX_NEG
 
    REAL,       DIMENSION( ims:ime, jms:jme )                    , &
                OPTIONAL                                         , &
@@ -2083,6 +2094,49 @@ CONTAINS
    !$OMP END PARALLEL DO
 
    ENDIF
+
+   !bloss: partition the surface moisture flux into its positive and negative components
+      IF( PRESENT(QFX_POS) ) THEN
+         QFX_POS(:,:) = 0.
+         WHERE(QFX(:,:)>0.) 
+            QFX_POS(:,:) = QFX(:,:)
+         END WHERE
+
+         IF( PRESENT(HDO_QFX_POS) ) THEN
+            HDO_QFX_POS(:,:) = 0.
+            WHERE(QFX(:,:)>0.) 
+               HDO_QFX_POS(:,:) = HDO_QFX(:,:)
+            END WHERE
+         END IF
+
+         IF( PRESENT(O18_QFX_POS) ) THEN
+            O18_QFX_POS(:,:) = 0.
+            WHERE(QFX(:,:)>0.) 
+               O18_QFX_POS(:,:) = O18_QFX(:,:)
+            END WHERE
+         END IF
+      END IF
+
+      IF( PRESENT(QFX_NEG) ) THEN
+         QFX_NEG(:,:) = 0.
+         WHERE(QFX(:,:)<0.) 
+            QFX_NEG(:,:) = QFX(:,:)
+         END WHERE
+
+         IF( PRESENT(HDO_QFX_NEG) ) THEN
+            HDO_QFX_NEG(:,:) = 0.
+            WHERE(QFX(:,:)<0.) 
+               HDO_QFX_NEG(:,:) = HDO_QFX(:,:)
+            END WHERE
+         END IF
+
+         IF( PRESENT(O18_QFX_NEG) ) THEN
+            O18_QFX_NEG(:,:) = 0.
+            WHERE(QFX(:,:)<0.) 
+               O18_QFX_NEG(:,:) = O18_QFX(:,:)
+            END WHERE
+         END IF
+      END IF
 
    END SUBROUTINE pbl_driver
 

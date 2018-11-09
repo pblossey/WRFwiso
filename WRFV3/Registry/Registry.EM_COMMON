@@ -1843,15 +1843,15 @@ state    real  PBLH             ij      misc        1         -      rh       "P
 state    real  CAPG             ij      misc        1         -      r        "CAPG"                  "HEAT CAPACITY FOR SOIL"                       "J K-1 m-3"      
 state    real  THC              ij      misc        1         -      r        "THC"                   "THERMAL INERTIA"                              "Cal cm-2 K-1 s-0.5"      
 state    real  HFX              ij      misc        1         -      rh       "HFX"                   "UPWARD HEAT FLUX AT THE SURFACE"              "W m-2"      
-state    real  QFX              ij      misc        1         -      rh       "QFX"                   "UPWARD MOISTURE FLUX AT THE SURFACE"          "kg m-2 s-1"      
+state    real  QFX              ij      misc        1         -      rh       "QFX"                   "NET UPWARD MOISTURE FLUX AT THE SURFACE"          "kg m-2 s-1"      
 
 #..Begin addition (bloss/wiso)
 
 # bloss/wiso: Set to true to Enable water isotopologues physics
 rconfig   logical     wisotope            namelist,physics               1              .false. rh       "wisotope"                "Set to true to enable water isotopologue physics -- only supported for mp_physics=108 and MYJ sfc/pbl schemes"      ""
 
-state    real  HDO_QFX          ij      misc        1         -      rh       "HDO_QFX"               "UPWARD HDO MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
-state    real  O18_QFX          ij      misc        1         -      rh       "O18_QFX"               "UPWARD O18 MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
+state    real  HDO_QFX          ij      misc        1         -      rh       "HDO_QFX"               "NET UPWARD HDO MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
+state    real  O18_QFX          ij      misc        1         -      rh       "O18_QFX"               "NET UPWARD O18 MOISTURE FLUX AT THE SURFACE (rel. to SMOW)"  "kg m-2 s-1"      
 state    real  HDO_QZ0          ij      misc        1         -      r        "HDO_QZ0"               "NEAR-SURFACE (at ZNT) SPECIFIC HUMIDITY OF HDO (rel. to SMOW)"  "kg kg-1"      
 state    real  O18_QZ0          ij      misc        1         -      r        "O18_QZ0"               "NEAR-SURFACE (at ZNT) SPECIFIC HUMIDITY OF O18 (rel. to SMOW)"  "kg kg-1"      
 state    real  HDO_QSFC          ij      misc        1         -      r       "HDO_QSFC"               "SURFACE SPECIFIC HUMIDITY OF HDO (rel. to SMOW)"  "kg kg-1"      
@@ -1860,6 +1860,14 @@ state    real  R_HDO_SURF       ij      misc        1         -      i01rhdu    
 state    real  R_O18_SURF       ij      misc        1         -      i01rhdu       "R_O18_SURF"            "O18 ISOTOPIC RATIO OF SURFACE WATERS (rel. to SMOW)"  ""      
 state    real  R_HDO_QFX       ij      misc        1         -      i01rhdu       "R_HDO_QFX"            "HDO ISOTOPIC RATIO OF SURFACE MOISTURE FLUX FROM LAND/SEA ICE (rel. to SMOW)"  ""      
 state    real  R_O18_QFX       ij      misc        1         -      i01rhdu       "R_O18_QFX"            "O18 ISOTOPIC RATIO OF SURFACE MOISTURE FLUX FROM LAND/SEA ICE (rel. to SMOW)"  ""      
+
+state    real  QFX_POS          ij      misc        1         -      rh       "QFX_POS"                "POSITIVE-DEFINITE (UPWARD-ONLY) MOISTURE FLUX AT THE SURFACE (QFX_POS>0 IS UPWARDS)"          "kg m-2 s-1"      
+state    real  HDO_QFX_POS      ij      misc        1         -      rh       "HDO_QFX_POS"            "NET UPWARD HDO MOISTURE FLUX AT THE SURFACE WHEN QFX>0 (rel. to SMOW)"  "kg m-2 s-1"      
+state    real  O18_QFX_POS      ij      misc        1         -      rh       "O18_QFX_POS"            "NET UPWARD O18 MOISTURE FLUX AT THE SURFACE WHEN QFX>0 (rel. to SMOW)"  "kg m-2 s-1"      
+
+state    real  QFX_NEG          ij      misc        1         -      rh       "QFX_NEG"               "NEGATIVE-DEFINITE (DOWNWARD-ONLY) MOISTURE FLUX AT THE SURFACE (QFX_NEG<0 IS DOWNWARDS)"          "kg m-2 s-1"      
+state    real  HDO_QFX_NEG      ij      misc        1         -      rh       "HDO_QFX_NEG"           "NET UPWARD HDO MOISTURE FLUX AT THE SURFACE WHEN QFX<0 (rel. to SMOW)"  "kg m-2 s-1"      
+state    real  O18_QFX_NEG      ij      misc        1         -      rh       "O18_QFX_NEG"           "NET UPWARD O18 MOISTURE FLUX AT THE SURFACE WHEN QFX<0 (rel. to SMOW)"  "kg m-2 s-1"      
 
 #..End addition (bloss/wiso)
 
