@@ -692,8 +692,10 @@
 !  in the next call to module_sf_myjsfc. Note that the surface flux over
 !  ocean points will not be equal to the QFX computed in the surface scheme and output
 !  in the wrfout netcdf file.  This will complicate efforts to contrain the mass budget
-!  for moisture.  It is possible to back out the actual evaporation flux using the 
-!  column-integrated moisture budget, and I may try to do this.
+!  for moisture. 
+
+!bloss(TODO): Back out the actual evaporation flux using the column-integrated moisture budget
+!  and output as QFX_PBL or something like that.
 
             PSFC=PINT(I,LOWLYR(I,J),J)
             EXNSFC=(1.E5/PSFC)**CAPA
