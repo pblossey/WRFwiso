@@ -11,7 +11,8 @@
 !
 !bloss/wiso: Needed for isotopic surface fluxes   
    USE module_mp_water_isotopologues, only: &
-        alfaW_equilibrium, kfac_surf_HDO, kfac_surf_O18, fractionate
+        alfaW_equilibrium, alfaI_equilibrium, &
+        kfac_surf_HDO, kfac_surf_O18, fractionate
 !
 !----------------------------------------------------------------------
 !
@@ -78,8 +79,8 @@ CONTAINS
      &                 ,QGH,CPM,CT                                     &
      &                 ,U10,V10,T02,TH02,TSHLTR,TH10,Q02,QSHLTR,Q10,PSHLTR          &
      &                 ,P1000mb                                        &
-     &                 ,HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF     & !bloss/wiso
-     &                 ,O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF     & !bloss/wiso
+     &                 ,HDO_QV,HDO_QZ0,HDO_QSFC,HDO_QFX,R_HDO_SURF_OCN,R_HDO_SURF_LAND     & !bloss/wiso
+     &                 ,O18_QV,O18_QZ0,O18_QSFC,O18_QFX,R_O18_SURF_OCN,R_O18_SURF_LAND     & !bloss/wiso
      &                 ,WISOTOPE                                       & !bloss/wiso
      &                 ,IDS,IDE,JDS,JDE,KDS,KDE                        &
      &                 ,IMS,IME,JMS,JME,KMS,KME                        &
@@ -130,7 +131,8 @@ CONTAINS
 !
 !bloss/wiso: variables for implementation of isotopic surface fluxes
       REAL,DIMENSION(IMS:IME,KMS:KME,JMS:JME),INTENT(IN),OPTIONAL :: HDO_QV, O18_QV !bloss/wiso
-      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_SURF, R_O18_SURF !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_SURF_OCN, R_O18_SURF_OCN !bloss/wiso
+      REAL,DIMENSION(IMS:IME,JMS:JME), INTENT(IN), OPTIONAL :: R_HDO_SURF_LAND, R_O18_SURF_LAND !bloss/wiso
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(OUT),OPTIONAL :: HDO_QFX, O18_QFX !bloss/wiso
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT),OPTIONAL :: HDO_QZ0, O18_QZ0 !bloss/wiso
       REAL,DIMENSION(IMS:IME,JMS:JME),INTENT(INOUT),OPTIONAL :: HDO_QSFC, O18_QSFC !bloss/wiso
@@ -379,13 +381,13 @@ CONTAINS
 
             IF(SEAMASK.GT.0.5) THEN
               ! ocean
-              HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J) / alfaW_equilibrium( TSK(I,J), 19 )
-              O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J) / alfaW_equilibrium( TSK(I,J), 20 )
+              HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF_OCN(I,J) / alfaW_equilibrium( TSK(I,J), 19 )
+              O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF_OCN(I,J) / alfaW_equilibrium( TSK(I,J), 20 )
               
               IF(.NOT.fractionate) THEN
                 !bloss/wiso: Turn off equilibrium fractionation in testing runs w/o fractionation
-                HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J)
-                O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J)
+                HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF_OCN(I,J)
+                O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF_OCN(I,J)
               END IF
 
               ! Express QZ0 as a linear combination of QSFC and QLOW,
@@ -400,11 +402,18 @@ CONTAINS
               ! land:  First, QZ0==QSFC, so Z0fac = 1.
               Z0fac = 1.
 
-              ! Second, we do not have an isotope-enabled land
-              !   scheme at this point, so let us assume a fixed, user-specific isotopic
-              !   content for land waters.
-              HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF(I,J)
-              O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF(I,J)
+              ! Second, we do not have an isotope-enabled land scheme at
+              !  this point, so let us assume a fixed, user-specified
+              !  isotopic content for land waters.
+              IF(TSK(I,J).GT.273.15) THEN
+                 ! ASSUME LIQUID FRACTIONATION OF MOISTURE AT SURFACE
+                 HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF_LAND(I,J) / alfaW_equilibrium( TSK(I,J), 19 )
+                 O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF_LAND(I,J) / alfaW_equilibrium( TSK(I,J), 20 )
+              ELSE
+                 ! ICE FRACTIONATION OF MOISTURE AT SURFACE
+                 HDO_QSFC(I,J) = QSFC(I,J) * R_HDO_SURF_LAND(I,J) / alfaI_equilibrium( TSK(I,J), 19 )
+                 O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF_LAND(I,J) / alfaI_equilibrium( TSK(I,J), 20 )
+              END IF
 
             END IF !IF(SEAMASK>0.5)
 
@@ -432,6 +441,22 @@ CONTAINS
             HDO_QFX(I,J) = FLQC(I,J) * ( HDO_QZ0(I,J) - HDO_QLOW )
             O18_QFX(I,J) = FLQC(I,J) * ( O18_QZ0(I,J) - O18_QLOW )
 
+            IF((SEAMASK.LT.0.5).AND.(QFX(I,J).GT.0.)) THEN 
+               ! ASSUME UPWARD MOISTURE FLUX OVER LAND IS NON-FRACTIONATING
+               !   FOR ICE AND SNOW, THIS MEANS SUBLIMATION WOULD BE NON-FRACTIONATING
+               !   FOR OTHER LAND SURFACES, THIS APPROXIMATES A SURFACE FLUX DOMINATED
+               !   BY TRANSPIRATION
+               HDO_QFX(I,J) = QFX(I,J)*R_HDO_SURF_LAND(I,J)
+               O18_QFX(I,J) = QFX(I,J)*R_O18_SURF_LAND(I,J)
+               
+               IF(FLQC(I,J).GT.1.e-8) THEN
+                  HDO_QZ0(I,J) = HDO_QLOW + HDO_QFX(I,J)/FLQC(I,J)
+                  O18_QZ0(I,J) = O18_QLOW + O18_QFX(I,J)/FLQC(I,J)
+               ELSE
+                  HDO_QZ0(I,J) = HDO_QLOW 
+                  O18_QZ0(I,J) = O18_QLOW 
+               END IF
+            END IF
 
           END IF !IF(wisotope)
 
