@@ -6,8 +6,6 @@
 !
       USE MODULE_MODEL_CONSTANTS
       USE MODULE_WRF_ERROR !bloss: allows optional output of max/min check on blten
-      USE module_mp_water_isotopologues, only: &
-           fractionate, alfaW_equilibrium, kfac_surf_HDO, kfac_surf_O18
 !
 !-----------------------------------------------------------------------
 !
@@ -216,7 +214,7 @@
      &       RHDO_QVBLTEN,RHDO_QCBLTEN,RHDO_QIBLTEN      &  !bloss
      &      ,RO18_QVBLTEN,RO18_QCBLTEN,RO18_QIBLTEN         !bloss
 !
-      REAL :: Z0fac, kfac_HDO, kfac_O18
+      REAL :: Z0fac
 
 !bloss/wiso ...end
 !

@@ -12,7 +12,7 @@
 !bloss/wiso: Needed for isotopic surface fluxes   
    USE module_mp_water_isotopologues, only: &
         alfaW_equilibrium, alfaI_equilibrium, &
-        kfac_surf_HDO, kfac_surf_O18, fractionate
+        SurfaceFractionationCoefficient, fractionate
 !
 !----------------------------------------------------------------------
 !
@@ -63,6 +63,9 @@
 !
       REAL,DIMENSION(KZTM) :: PSIH1,PSIH2,PSIM1,PSIM2
 !
+!----------------------------------------------------------------------
+!bloss: inputs to surface fractionation coefficient function
+      REAL :: windspeed, temperature, density, height
 !----------------------------------------------------------------------
 !
 CONTAINS
@@ -417,11 +420,18 @@ CONTAINS
 
             END IF !IF(SEAMASK>0.5)
 
-            !bloss/wiso: For simplicity, assume fixed (wind-speed-independent) values for
-            !  the kinetic fractionation of the surface fluxes, following Pfahl & Wernli (2009, sec. 5)
-            kfac_HDO = kfac_surf_HDO
-            kfac_O18 = kfac_surf_O18
-
+            !bloss/wiso: Allow choice of different parameterizations for surface fractionation coefficient
+            !     - 'Merlivat': Merlivat & Jouzel (1979, JGR, https://doi.org/10.1029/JC084iC08p05029 ): wind-speed-dependent
+            !     - 'Pfahl': Pfahl & Wernli (2009, JGR, https://doi.org/10.1029/JC084iC08p05029 ): wind-speed-independent
+            windspeed = SQRT( ULOW**2 + VLOW**2 )
+            temperature = TLOW
+            density = PLOW/(R_D*TLOW)
+            height = zsl
+            kfac_HDO = SurfaceFractionationCoefficient('Merlivat', windspeed, temperature, density, height, 19)
+            kfac_O18 = SurfaceFractionationCoefficient('Merlivat', windspeed, temperature, density, height, 20)
+            write(*,992) windspeed, temperature, density, height, kfac_hdo, kfac_o18
+            992 format('WS = ',F8.3,' T = ',F8.3,' RHO = ',F6.3,' ZLOW = ',F8.3,' KFAC(HDO/O18) = ',2F7.4)
+            
             !bloss/wiso: Turn off kinetic fractionation in testing runs without fractionation
             IF(.NOT.fractionate) THEN
               kfac_HDO = 1.

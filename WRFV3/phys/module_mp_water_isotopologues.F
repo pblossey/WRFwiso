@@ -1,5 +1,7 @@
 MODULE module_mp_water_isotopologues
 
+  implicit none
+
   !bloss: Constants for computing isotope fractionation
   ! NOTE iso_index=18, H2O16
   ! NOTE iso_index=19, HDO16
@@ -120,5 +122,135 @@ CONTAINS
                              *Vrat_light_over_heavy)
 
   END FUNCTION alfaK
+
+  !****************************************************************
+  !****************************************************************
+  REAL FUNCTION SurfaceFractionationCoefficient(type, windspeed, temperature, density, height, iso_index)
+    !bloss (2018-12-06): Return the surface fractionation coefficient
+    !   that represents the effect of differing molecular
+    !   diffusivities of the heavy isotopologues on the surface
+    !   transfer coefficient for moisture.  Three options are
+    !   available:
+    !     - Merlivat & Jouzel (1979, JGR, https://doi.org/10.1029/JC084iC08p05029 ): wind-speed-dependent
+    !     - Pfahl & Wernli (2009, JGR, https://doi.org/10.1029/JC084iC08p05029 ): wind-speed-independent
+    !     - 
+    !----------------------------------------------------------------
+    IMPLICIT NONE
+    !----------------------------------------------------------------
+    CHARACTER(LEN=*), INTENT(IN) :: type ! 'Merlivat', 'PfahlWernli', 'Schoenemann', 'Fairall'
+    REAL, INTENT(IN   ) :: windspeed  ! wind speed in m/s
+    REAL, INTENT(IN   ) :: temperature ! absolute temperature in K
+    REAL, INTENT(IN   ) :: density ! density in kg/m3
+    REAL, INTENT(IN   ) :: height ! height of lowest level in m
+    INTEGER, INTENT(IN) :: iso_index !==19 for HDO, ==20 for H2O18
+
+    select case (type(1:4))
+      case ('Merl')
+        SurfaceFractionationCoefficient = &
+             MerlivatAlphaKinetic(windspeed,density,height,iso_index)
+      case ('Pfah')
+        select case(iso_index)
+        case (18)
+          SurfaceFractionationCoefficient = 1.0000 ! H2O16
+        case (19)
+          SurfaceFractionationCoefficient = 0.9961 ! HDO
+        case (20)
+          SurfaceFractionationCoefficient = 0.9925 ! H2O18
+        case default
+          write(*,*) 'Bad value for iso_index in SurfaceFractionationCoefficient'
+          STOP 'in module_mp_water_isotopologues.F'
+        end select
+            
+      case ('Scho')
+        write(*,*) 'Fairall surface fractionation not yet coded, stopping...'
+        STOP 'in module_mp_water_isotopologues.F'
+!!$        alpha_diff_18 = 1.0096
+!!$        alpha_diff_2 = 1. + 
+!!$        select case(iso_index)
+!!$        case (18)
+!!$          SurfaceFractionationCoefficient = 1.0000 ! H2O16
+!!$        case (19)
+!!$          SurfaceFractionationCoefficient = 0.9961 ! HDO
+!!$        case (20)
+!!$          SurfaceFractionationCoefficient = 1./1.0096 ! H2O18 -- based on Luz & Barkan (2010)
+!!$        case default
+!!$          write(*,*) 'Bad value for iso_index in SurfaceFractionationCoefficient'
+!!$          STOP 'in module_mp_water_isotopologues.F'
+!!$        end select
+            
+      case ('Fair')
+        write(*,*) 'Fairall surface fractionation not yet coded, stopping...'
+        STOP 'in module_mp_water_isotopologues.F'
+
+    case default
+      write(*,*) TRIM(type), ' surface fractionation scheme not yet coded, stopping...'
+      STOP 'in module_mp_water_isotopologues.F'
+    end select
+
+  END FUNCTION SurfaceFractionationCoefficient
+
+  real function MerlivatAlphaKinetic(windspeed, density, zbot, iso_index)
+
+    REAL, INTENT(IN   ) :: windspeed  ! wind speed in m/s
+    REAL, INTENT(IN   ) :: density ! density in kg/m3
+    REAL, INTENT(IN   ) :: zbot  ! height of bottom atmospheric level in m
+    INTEGER, INTENT(IN) :: iso_index !==19 for HDO, ==20 for H2O18
+
+    ! Parameters for Merlivat-Jouzel parameterization,
+    !   taken from iCAM: models/csm_share/shr/water_isotopes.F90
+    real, parameter :: difair = 2.36e-5 ! molecular diffusivity of air
+    real, parameter :: muair  = 1.7e-5  ! dynamic viscosity of air
+                                               ! about 17 degC, 1.73 at STP (Salby)
+    real, parameter :: gravit = 9.80616    ! gravity 
+    real, parameter :: karman = 0.4        ! Von Karman constant
+    real, parameter :: umin  =  0.5 ! minimum wind speed (m/s)
+    real, parameter :: recrit   = 1.0            ! critical raynolds number for kmol
+
+    real :: z0                 ! roughness length (constant in cam 9.5e-5)
+    real :: ustar              ! friction velocity, m/s
+    real :: reno               ! surface reynolds number
+    real :: tmr                ! ratio of turbulen to molecular resistance
+    real :: enn		! diffusive power
+    real :: sc                 ! Schmidt number (Prandtl number)
+    real :: vmu                ! kinematic viscocity of air
+    real :: difn               ! ratio of difusivities to the power of n
+    real :: difrmj		! isotopic diffusion with substitutions
+    real :: kmol               ! Merlivals k_mol
+    real    :: vmag   ! surface wind magnitude   (m/s)
+    real    :: rdn    ! sqrt of neutral exchange coeff (momentum) 
+    real    :: cdn    ! function: neutral drag coeff at 10m
+    real    :: Umps   ! windspeed input to drag coefficient computation
+    cdn(Umps)  =   0.0027 / Umps + 0.000142 + 0.0000764 * Umps
+
+
+        ! From iCAM: models/csm_share/shr/water_isotopes.F90
+        difrmj = 1./Drat_light_over_heavy(iso_index)
+!
+        ! friction velocity (ustar) computation taken from
+        !    iCAM: models/csm_share/shr/shr_flux_mod.F90
+        vmag   = max(umin, windspeed )
+        rdn    = sqrt(cdn(vmag))
+        ustar = rdn * vmag
+
+        ! compute Reynolds number
+        z0 = (ustar**2.)/(81.1*gravit)  ! Charnock's equation
+        vmu = muair / density             ! kinematic viscosity
+        Sc  = vmu/difair
+        reno = ustar*z0 / vmu       ! reynolds number
+!
+        if (reno < recrit) then        ! Smooth (Re < 0.13)
+          enn = 2./3.
+          tmr  = ( (1./karman)*log(ustar*zbot / (30. * vmu)) ) / (13.6 * Sc**(2./3.))
+        else                           ! Rough  (Re > 2)
+          enn = 1./2.
+          tmr  = ( (1./karman)*log(zbot/z0) - 5.) / (7.3 * reno**(1./4.) * Sc**(1./2.))
+        end if
+
+        difn = (1./difrmj)**enn        ! use D/Di, not Di/D
+        kmol = (difn - 1.) / (difn + tmr)
+
+        MerlivatAlphaKinetic = 1. - kmol
+
+  end function MerlivatAlphaKinetic
 
 END MODULE module_mp_water_isotopologues
