@@ -469,6 +469,9 @@ BENCH_START(surf_driver_tim)
      &        ,O18_QFX=grid%o18_qfx,O18_QV=scalar(ims,kms,jms,P_O18_QV)  & ! romps/bloss/wiso 
      &        ,O18_QZ0=grid%o18_qz0, O18_QSFC=grid%o18_qsfc & !bloss/wiso (MYJ/Noah surface schemes)
      &        ,R_O18_SURF=grid%r_o18_surf,R_O18_QFX=grid%r_o18_qfx  & !bloss/wiso (MYJ/Noah surface schemes)
+     &        ,QFX_POS=grid%qfx_pos,QFX_NEG=grid%qfx_neg & !bloss/wiso/qfx paritioning
+     &        ,HDO_QFX_POS=grid%hdo_qfx_pos,HDO_QFX_NEG=grid%hdo_qfx_neg & !bloss/wiso/qfx paritioning
+     &        ,O18_QFX_POS=grid%o18_qfx_pos,O18_QFX_NEG=grid%o18_qfx_neg & !bloss/wiso/qfx paritioning
      &        ,QSHLTR=grid%qshltr      ,QZ0=grid%qz0            ,RAINCV=grid%raincv      &
      &        ,RA_LW_PHYSICS=config_flags%ra_lw_physics         ,RHO=grid%rho            &
      &        ,RMOL=grid%rmol          ,SFCEVP=grid%sfcevp      ,SFCEXC=grid%sfcexc      &
@@ -931,6 +934,9 @@ BENCH_START(pbl_driver_tim)
      &        ,HDO_QFX=grid%hdo_qfx, HDO_QZ0=grid%hdo_qz0,HDO_QSFC=grid%hdo_qsfc & !bloss/wiso (MYJ PBL scheme)
      &        ,O18_QFX=grid%o18_qfx, O18_QZ0=grid%o18_qz0,O18_QSFC=grid%o18_qsfc & !bloss/wiso (MYJ PBL scheme)
      &        ,R_HDO_SURF=grid%r_hdo_surf, R_O18_SURF=grid%r_o18_surf     & !bloss/wiso
+     &        ,QFX_POS=grid%qfx_pos,QFX_NEG=grid%qfx_neg & !bloss/wiso/qfx paritioning
+     &        ,HDO_QFX_POS=grid%hdo_qfx_pos,HDO_QFX_NEG=grid%hdo_qfx_neg & !bloss/wiso/qfx paritioning
+     &        ,O18_QFX_POS=grid%o18_qfx_pos,O18_QFX_NEG=grid%o18_qfx_neg & !bloss/wiso/qfx paritioning
      &        ,RHDO_QVBLTEN=grid%rhdo_qvblten                             &
      &        ,RHDO_QCBLTEN=grid%rhdo_qcblten                             &
      &        ,RHDO_QIBLTEN=grid%rhdo_qiblten                             &
