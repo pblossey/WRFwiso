@@ -1,4 +1,4 @@
-function [] = CESM2WPSNetcdf(model,runtag,cam_h1_filename, ...
+function [] = CESM2WPSNetcdf(model,runtag,h0tag,cam_h1_filename, ...
                              syy,smm,sdd,eyy,emm,edd);
 
 % CESM2WPSNetcdf.m: This script is intended to take CESM output
@@ -34,9 +34,9 @@ tic
   cam.lon = double(ncread(cam.nc,'lon'));
 
   % monthly climatologies for CAM, CLM, CICE
-  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.climo.nc',runtag);
-  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.climo.nc',runtag);
-  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.climo.nc',runtag);
+  cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.%s.nc',runtag,h0tag);
+  cam.nc_clm_h0 = sprintf('GCMOutput/%s.clm2.h0.%s.nc',runtag,h0tag);
+  cam.nc_cice_h0 = sprintf('GCMOutput/%s.cice.h.%s.nc',runtag,h0tag);
 
   %   extract soil moisture/soil temperature climatologies from CLM output
   soil_depths = [0 0.1 0.4 1.0 2.0]; % edges of NOAH soil layers in meters
