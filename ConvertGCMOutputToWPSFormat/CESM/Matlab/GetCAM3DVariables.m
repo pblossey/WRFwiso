@@ -39,13 +39,19 @@ cam.wh3D = {{'U',     'UU       '}, ...
 % read in each of the 3D fields.  Add them to the tmp structure
 %     with the name from the CAM output file.
 clear tmp
+have_var = true([1 length(cam.wh3D)]);
 for m = 1:length(cam.wh3D)
   CAMname = cam.wh3D{m}{1};
 
   start = [1 1 1 itime];
   count = [cam.Nlon cam.Nlat cam.Nlev 1];
-  tmp.(CAMname) = permute( ...
-      double(ncread(cam.nc,CAMname,start,count)), [3 1 2]);
+  try var_in = ncread(cam.nc,CAMname,start,count);
+  catch
+    have_var(m) = false;
+    disp(sprintf('Could not find %s in %s file.',CAMname,cam.nc))
+    continue
+  end
+  tmp.(CAMname) = permute(double(var_in), [3 1 2]);
 end
 
 % compute deltas for isotopes.
@@ -57,6 +63,11 @@ nout = 0;
 for m = 1:length(cam.wh3D)
   CAMname = cam.wh3D{m}{1};
   WPSname = cam.wh3D{m}{2};
+
+  if ~have_var(m)
+    disp(sprintf('Will not supply %s to WPS.',strtrim(WPSname)))
+    continue
+  end
 
   % copy pres_list into a temporary variable, so that the first
   % entry (200100) can be replaced with the surface pressure in
