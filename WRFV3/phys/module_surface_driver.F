@@ -365,7 +365,8 @@ CONTAINS
    USE module_cpl, ONLY : coupler_on, cpl_rcv
 !
 !bloss/wiso: Needed for isotopic surface fluxes   
-   USE module_mp_water_isotopologues, only: alfaW_equilibrium
+   USE module_mp_water_isotopologues, only: alfaW_equilibrium, &
+        SurfaceFractionationCoefficient
 !
 !  This driver calls subroutines for the surface parameterizations.
 !
@@ -4177,7 +4178,13 @@ CONTAINS
                      ! for simplicity, use a fixed value for surface fractionation
                      !   rather than the wind-speed-dependent formulation in
                      !   Merlivat & Jouzel (1979).
-                     tmp_kfrac = 0.9961 ! Section 5 of Pfahl & Wernli (2009)
+                     tmp_kfrac = SurfaceFractionationCoefficient('Merlivat', &
+                          SQRT( U_PHY(i,1,j)**2 + V_PHY(i,1,j)**2 ), & ! windspeed
+                          TH_PHY(i,1,j)/((1.E5/PSFC(I,J))**RCP), & ! temperature
+                          PSFC(I,J)/(r_d*TH_PHY(i,1,j)/((1.E5/PSFC(I,J))**RCP)), & ! density
+                          0.5*DZ8W(I,1,J), & ! height of lowest level
+                          19)
+!bloss(2019-01-04)                     tmp_kfrac = 0.9961 ! Section 5 of Pfahl & Wernli (2009)
 
                      ! equilibrium fractionation coefficient for HDO over liquid.
                      tmp_alpha_liq = alfaW_equilibrium( SST(i,j), 19 )
@@ -4249,7 +4256,13 @@ CONTAINS
                      ! for simplicity, use a fixed value for surface fractionation
                      !   rather than the wind-speed-dependent formulation in
                      !   Merlivat & Jouzel (1979).
-                     tmp_kfrac = 0.9925 ! Section 5 of Pfahl & Wernli (2009)
+                     tmp_kfrac = SurfaceFractionationCoefficient('Merlivat', &
+                          SQRT( U_PHY(i,1,j)**2 + V_PHY(i,1,j)**2 ), & ! windspeed
+                          TH_PHY(i,1,j)/((1.E5/PSFC(I,J))**RCP), & ! temperature
+                          PSFC(I,J)/(r_d*TH_PHY(i,1,j)/((1.E5/PSFC(I,J))**RCP)), & ! density
+                          0.5*DZ8W(I,1,J), & ! height of lowest level
+                          20)
+!bloss(2019-01-04)                     tmp_kfrac = 0.9925 ! Section 5 of Pfahl & Wernli (2009)
 
                      ! equilibrium fractionation coefficient for O18 over liquid.
                      tmp_alpha_liq = alfaW_equilibrium( SST(i,j), 20 )
