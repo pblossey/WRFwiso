@@ -13,13 +13,34 @@ function [nout] = GetCICE2DVariables(ncWPS,cam,cice,itime,hdate)
 %   The input, cice, is a structure holding monthly climatologies of 
 %   CICE outputs
 
-tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+target_time = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+if ~isempty(strfind(cam.nc_cice_h0,'climo'))
+  target_time = mod(target_time,365); % day of year                                                          
+end
+
 % figure out where this time lies in the climatology and compute
 % interpolation weights, so that the value of a climatology at time tt_climo should be
 %   w1*f(i1) + w2*f(i1+1);
-i1 = max(find(cice.time<tt_climo));
-w1 = (cice.time(i1+1)-tt_climo)/diff(cice.time(i1:i1+1));
+i1 = max(find(cice.time<target_time));
+if isempty(i1) 
+  i1=1; i2 = 1; % target_time < min(cice.time), extrapolate
+                % from initial value
+  w1 = 1;
+elseif target_time > max(cice.time)
+  i2 = i1; % extrapolate from final value
+  w1 = 1;
+else        
+  i2 = i1+1; 
+  w1 = (cice.time(i1+1)-target_time)/diff(cice.time(i1:i2));
+end
 w2 = 1 - w1;
+% $$$ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+% $$$ % figure out where this time lies in the climatology and compute
+% $$$ % interpolation weights, so that the value of a climatology at time tt_climo should be
+% $$$ %   w1*f(i1) + w2*f(i1+1);
+% $$$ i1 = max(find(cice.time<tt_climo));
+% $$$ w1 = (cice.time(i1+1)-tt_climo)/diff(cice.time(i1:i1+1));
+% $$$ w2 = 1 - w1;
 
 
   %  Get a list of 2D fields from CAM to be output.

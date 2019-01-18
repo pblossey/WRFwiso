@@ -16,15 +16,36 @@ function [nout] = GetCLM3DVariables(ncWPS,cam,clm,itime,hdate,soil_depths)
 % # of WRF soil depths
 Ndepth = length(soil_depths)-1;
 
-tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of
-                                                           % year                                   
+target_time = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of year                                                          
+if ~isempty(strfind(cam.nc_clm_h0,'climo'))
+  target_time = mod(target_time,365); % day of year                                                          
+end
 
 % figure out where this time lies in the climatology and compute
 % interpolation weights, so that the value of a climatology at time tt_climo should be
 %   w1*f(i1) + w2*f(i1+1);
-i1 = max(find(clm.time<tt_climo));
-w1 = (clm.time(i1+1)-tt_climo)/diff(clm.time(i1:i1+1));
+i1 = max(find(clm.time<target_time));
+if isempty(i1) 
+  i1=1; i2 = 1; % target_time < min(clm.time), extrapolate
+                % from initial value
+  w1 = 1;
+elseif target_time > max(clm.time)
+  i2 = i1; % extrapolate from final value
+  w1 = 1;
+else        
+  i2 = i1+1; 
+  w1 = (clm.time(i1+1)-target_time)/diff(clm.time(i1:i2));
+end
 w2 = 1 - w1;
+% $$$ tt_climo = mod(double(ncread(cam.nc,'time',itime,1)),365); % day of
+% $$$                                                            % year                                   
+% $$$ 
+% $$$ % figure out where this time lies in the climatology and compute
+% $$$ % interpolation weights, so that the value of a climatology at time tt_climo should be
+% $$$ %   w1*f(i1) + w2*f(i1+1);
+% $$$ i1 = max(find(clm.time<tt_climo));
+% $$$ w1 = (clm.time(i1+1)-tt_climo)/diff(clm.time(i1:i1+1));
+% $$$ w2 = 1 - w1;
 
 %%% convert CLM soil moisture in m3/m3 to kg/m3 for WPS
 %%tmp.SM = 1e3*tmp.SM;
