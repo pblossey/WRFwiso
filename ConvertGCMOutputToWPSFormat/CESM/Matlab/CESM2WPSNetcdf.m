@@ -1,4 +1,5 @@
 function [] = CESM2WPSNetcdf(model,runtag,h0tag,cam_h1_filename, ...
+                             lat_min,lat_max,lon_min,lon_max, ...
                              syy,smm,sdd,eyy,emm,edd);
 
 % CESM2WPSNetcdf.m: This script is intended to take CESM output
@@ -32,6 +33,15 @@ tic
   % coordinates
   cam.lat = double(ncread(cam.nc,'lat'));
   cam.lon = double(ncread(cam.nc,'lon'));
+
+  % trim coordinates
+  cam.lat_min = lat_min; cam.lat_max = lat_max;
+  cam.latind = find(cam.lat>=lat_min & cam.lat <= lat_max);
+  cam.lat = cam.lat(cam.latind);
+
+  cam.lon_min = lon_min; cam.lon_max = lon_max;
+  cam.lonind = find(cam.lon>=lon_min & cam.lon <= lon_max);
+  cam.lon = cam.lon(cam.lonind);
 
   % monthly climatologies for CAM, CLM, CICE
   cam.nc_cam_h0 = sprintf('GCMOutput/%s.cam.h0.%s.nc',runtag,h0tag);
