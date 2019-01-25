@@ -43,8 +43,13 @@ have_var = true([1 length(cam.wh3D)]);
 for m = 1:length(cam.wh3D)
   CAMname = cam.wh3D{m}{1};
 
-  start = [1 1 1 itime];
-  count = [cam.Nlon cam.Nlat cam.Nlev 1];
+  Nlat_requested = length(cam.latind);
+  Nlon_requested = length(cam.lonind);
+
+% $$$   start = [1 1 1 itime];
+% $$$   count = [cam.Nlon cam.Nlat cam.Nlev 1];
+  start = [cam.lonind(1) cam.latind(1) 1 itime];
+  count = [Nlon_requested Nlat_requested cam.Nlev 1];
   try var_in = ncread(cam.nc,CAMname,start,count);
   catch
     have_var(m) = false;
@@ -77,8 +82,8 @@ for m = 1:length(cam.wh3D)
   switch CAMname
    case {'Q'} % --> output RH for WPS
               % compute RH with respect to liquid for reference height
-    for ilat = 1:cam.Nlat
-      for ilon = 1:cam.Nlon
+    for ilat = 1:Nlat_requested
+      for ilon = 1:Nlon_requested
         tmp_pres(1) = PS(ilon,ilat);
 
         TT = interp1(pres(:,ilon,ilat),tmp.T(:,ilon,ilat), ...
@@ -99,8 +104,8 @@ for m = 1:length(cam.wh3D)
 
    case {'HDOV'}% --> output deltaD for WPS
     
-    for ilat = 1:cam.Nlat
-      for ilon = 1:cam.Nlon
+    for ilat = 1:Nlat_requested
+      for ilon = 1:Nlon_requested
         tmp_pres(1) = PS(ilon,ilat);
 
         DD = interp1(pres(:,ilon,ilat),tmp.deltaD(:,ilon,ilat), ...
@@ -116,8 +121,8 @@ for m = 1:length(cam.wh3D)
 
    case {'H218OV'}% --> output deltaO18 for WPS
     
-    for ilat = 1:cam.Nlat
-      for ilon = 1:cam.Nlon
+    for ilat = 1:Nlat_requested
+      for ilon = 1:Nlon_requested
         tmp_pres(1) = PS(ilon,ilat);
 
         DD = interp1(pres(:,ilon,ilat),tmp.deltaO18(:,ilon,ilat), ...
@@ -134,8 +139,8 @@ for m = 1:length(cam.wh3D)
    otherwise
 
     % extra a slice of the current field at pressure xlvl.
-    for ilat = 1:cam.Nlat
-      for ilon = 1:cam.Nlon
+    for ilat = 1:Nlat_requested
+      for ilon = 1:Nlon_requested
         tmp_pres(1) = PS(ilon,ilat);
 
         value3D(:,ilon,ilat) = interp1(pres(:,ilon,ilat),tmp.(CAMname)(:,ilon,ilat), ...
@@ -168,9 +173,9 @@ for m = 1:length(cam.wh3D)
     vinfo.Name = vname;
     vinfo.Datatype = 'double';
     vinfo.Dimensions(1).Name = 'lon';
-    vinfo.Dimensions(1).Length = cam.Nlon;
+    vinfo.Dimensions(1).Length = length(cam.lonind);
     vinfo.Dimensions(2).Name = 'lat';
-    vinfo.Dimensions(2).Length = cam.Nlat;
+    vinfo.Dimensions(2).Length = length(cam.latind);
 
     % add attributes for this variable
     ii = 1;

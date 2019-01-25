@@ -13,12 +13,22 @@ function [clm] = GetCLMClimatologies(cam,soil_depths)
 %   the setup of the run (e.g, Nlon, Nlat, etc.)
 
 clm.time = double(ncread(cam.nc_clm_h0,'time'));
+clm.lat = double(ncread(cam.nc_clm_h0,'lat'));
+clm.lon = double(ncread(cam.nc_clm_h0,'lon'));
+clm.latind = find(clm.lat>=cam.lat_min & clm.lat <= cam.lat_max);
+clm.lonind = find(clm.lon>=cam.lon_min & clm.lon <= cam.lon_max);
+
+Nlat_requested = length(clm.latind);
+Nlon_requested = length(clm.lonind);
+
+start = [clm.lonind(1) clm.latind(1) 1];
+count = [Nlon_requested Nlat_requested length(clm.time)];
 
 % get 2D CLM variables
 wh = {'SNOWLIQ','SNOWICE','SNOWDP'};
 for m = 1:length(wh)
   % read climatology
-  var_in = double(ncread(cam.nc_clm_h0,wh{m}));
+  var_in = double(ncread(cam.nc_clm_h0,wh{m},start,count));
 
   % permute to put time dimension first
   clm.(wh{m}) = permute(var_in, [3 1 2]);
@@ -29,18 +39,22 @@ Ndepth = length(soil_depths)-1;
 
 clear tmp
 
+% define interface depths for GCM soil levels
+tmp.levgrnd = double(ncread(cam.nc_clm_h0,'levgrnd')); % soil level centers
+Nlevgrnd = length(tmp.levgrnd);
+
+start = [clm.lonind(1) clm.latind(1) 1 1];
+count = [Nlon_requested Nlat_requested Nlevgrnd length(clm.time)];
+
 % read in climatology from file, and transpose to put time
 % dimension first.
 wh = {'TSOI','H2OSOI','TSOI_ICE'};
 for k = 1:length(wh)
-  tmp.(wh{k}) = permute(double(ncread(cam.nc_clm_h0,wh{k})),[4 1 2 3]);
+  tmp.(wh{k}) = permute(double(ncread(cam.nc_clm_h0,wh{k},start,count)), ...
+                        [4 1 2 3]);
 end
 
 Nt_climo = size(tmp.TSOI,1);
-
-% define interface depths for GCM soil levels
-tmp.levgrnd = double(ncread(cam.nc_clm_h0,'levgrnd')); % soil level centers
-Nlevgrnd = length(tmp.levgrnd);
 
 % GCM soil interface levels.
 tmp.levgrndi = [0; ...
@@ -48,9 +62,9 @@ tmp.levgrndi = [0; ...
                 1.5*tmp.levgrnd(end) - 0.5*tmp.levgrnd(end-1)];
 
 % Define arrays with soil temperature and moisture for WRF soil layers
-clm.ST = zeros(Nt_climo,cam.Nlon,cam.Nlat,Ndepth);
-clm.STICE = zeros(Nt_climo,cam.Nlon,cam.Nlat,Ndepth);
-clm.SM = zeros(Nt_climo,cam.Nlon,cam.Nlat,Ndepth);
+clm.ST = zeros(Nt_climo,Nlon_requested,Nlat_requested,Ndepth);
+clm.STICE = zeros(Nt_climo,Nlon_requested,Nlat_requested,Ndepth);
+clm.SM = zeros(Nt_climo,Nlon_requested,Nlat_requested,Ndepth);
 
 for k = 1:Ndepth
   htop = soil_depths(k);

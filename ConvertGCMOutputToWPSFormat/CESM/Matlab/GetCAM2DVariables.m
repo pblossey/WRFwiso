@@ -26,10 +26,12 @@ end
               {'LANDFRAC',  'LANDSEA  ',200100}, ...
               {'OCNFRAC',   'OCNFRAC  ',200100}, ...
               {'TS',        'SKINTEMP ',200100}, ...
-              {'QFLX_HDO',  'DHDOQFX  ',200100}, ...
-              {'QFLX_18O',  'DO18QFX  ',200100}, ...
-              {'PRECT_HDOR','DHDOSURF ',201300}, ...
-              {'PRECT_H218OR','DO18SURF ',201300} };
+              {'TS',  'DHDOQFX  ',200100}, ...
+              {'TS',  'DO18QFX  ',200100}, ...
+              {'TS','DHDOSURF ',201300}, ...
+              {'TS','DO18SURF ',201300} };
+% $$$               {'QFLX_HDO',  'DHDOQFX  ',200100}, ...
+% $$$               {'QFLX_18O',  'DO18QFX  ',200100}, ...
 % $$$               {'TREFHT',    'TT       ',200100}, ...
 % $$$               {'QREFHT',    'RH       ',200100}, ...
 
@@ -44,8 +46,13 @@ end
 
     disp(sprintf('%s %s',CAMname,WPSname))
 
-    start = [1 1 itime];
-    count = [cam.Nlon cam.Nlat 1];
+    Nlat_requested = length(cam.latind);
+    Nlon_requested = length(cam.lonind);
+
+% $$$     start = [1 1 itime];
+% $$$     count = [cam.Nlon cam.Nlat 1];
+    start = [cam.lonind(1) cam.latind(1) itime];
+    count = [Nlon_requested Nlat_requested 1];
     try var_in = ncread(cam.nc,CAMname,start,count);
     catch
       if ~isempty(strfind(CAMname,'PRECT'))
@@ -56,14 +63,17 @@ end
         end
         CAMname = CAMname(1:end-1);
       else
+        time_h0 = double(ncread(cam.nc_cam_h0,'time'));
+        start = [cam.lonind(1) cam.latind(1) 1];
+        count = [Nlon_requested Nlat_requested length(time_h0)];
+
         % get the field from the monthly 2D output
-        try var = ncread(cam.nc_cam_h0,CAMname);
+        try var = ncread(cam.nc_cam_h0,CAMname,start,count);
         catch
           disp(sprintf(['Could not find %s in either *.cam.h*.nc ' ...
                         'file.  Will not supply %s to WPS.'],CAMname,strtrim(WPSname)))
           continue
         end
-        time_h0 = double(ncread(cam.nc_cam_h0,'time'));
 
         ncfile = cam.nc_cam_h0;
 
@@ -85,87 +95,103 @@ end
 % $$$         disp(target_time)
 % $$$         disp([i1 w1 w2])
 
-        var_in = squeeze(w1*var(i1,:,:) + w2*var(i2,:,:));
+        var_in = squeeze(w1*var(:,:,i1) + w2*var(:,:,i2));
         clear var
       end
     end
     var_in = double(var_in);
 
     switch WPSname
-      case {'RH       '}
-       % compute RH with respect to liquid for reference height
-       ps = double(ncread(cam.nc,'PS',start,count));
-       T = double(ncread(cam.nc,'TREFHT',start,count));
-       qv = double(ncread(cam.nc,'QREFHT',start,count));
+     case {'RH       '}
+      % compute RH with respect to liquid for reference height
+      ps = double(ncread(cam.nc,'PS',start,count));
+      T = double(ncread(cam.nc,'TREFHT',start,count));
+      qv = double(ncread(cam.nc,'QREFHT',start,count));
 
-       qv = qv./(1 - qv); % convert from specific humidity to mass
-                          % mixing ratio
+      qv = qv./(1 - qv); % convert from specific humidity to mass
+                         % mixing ratio
 
-       value = qv./qsw(ps,T);
+      value = qv./qsw(ps,T);
 
-      case {'DHDOQFX  '}
+     case {'DHDOQFX  '}
 
-       % compute delta18O of surface fluxes based on the isotopic
-       % content of precipitation from a monthly climatology.  
-       % Probably okay for sea ice/antarctica.  
-       %  Should revisit for land areas north of antarctica.
+      % compute delta18O of surface fluxes based on the isotopic
+      % content of precipitation from a monthly climatology.  
+      % Probably okay for sea ice/antarctica.  
+      %  Should revisit for land areas north of antarctica.
 
-       % interpolate in time from montlhy average climatology.
-       %  This will let the forcings be smaooth from month to month
-       time = double(ncread(cam.nc_cam_h0,'time'));
-       prect = squeeze(interp1(time, ...
-                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
-                               target_time,'linear'));
-       try prect_in = ncread(cam.nc_cam_h0,'PRECT_HDOR');
-       catch
-         prect_in = ncread(cam.nc_cam_h0,'PRECT_HDO');
-       end
-       prect_HDO = squeeze(interp1(time,permute(double(prect_in),[3 1 2]), ...
-                               target_time,'linear'));
-       
-       value = 1000*(prect_HDO./prect - 1);
+      % interpolate in time from montlhy average climatology.
+      %  This will let the forcings be smaooth from month to month
+      time = double(ncread(cam.nc_cam_h0,'time'));
+      prect = squeeze(interp1(time, ...
+                              permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
+                              target_time,'linear','extrap'));
+      try prect_in = ncread(cam.nc_cam_h0,'PRECT_HDOR');
+      catch
+        prect_in = ncread(cam.nc_cam_h0,'PRECT_HDO');
+      end
+      prect_HDO = squeeze(interp1(time,permute(double(prect_in),[3 1 2]), ...
+                                  target_time,'linear','extrap'));
 
-      case {'DO18QFX  '}
+      maxmin2d(prect)
+      maxmin2d(prect_HDO)
+      
+      value = 1000*( (prect_HDO-prect)./(eps + prect) );
 
-       % compute deltaD of surface fluxes based on the isotopic
-       % content of precipitation.  Probably okay for sea
-       % ice/antarctica.  Should revisit for land areas north of antarctica.
-       % interpolate in time from montly average climatology.
-       %  This will let the forcings be smaooth from month to month
-       time = double(ncread(cam.nc_cam_h0,'time'));
-       prect = squeeze(interp1(time, ...
-                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
-                               target_time,'linear'));
-       try prect_in = ncread(cam.nc_cam_h0,'PRECT_H218OR');
-       catch
-         prect_in = ncread(cam.nc_cam_h0,'PRECT_H218O');
-       end
-       prect_H218O = squeeze(interp1(time,permute(double(prect_in),[3 1 2]), ...
-                               target_time,'linear'));
+      maxmin2d(value)
 
-       value = 1000*(prect_H218O./prect - 1);
+      % trim to size
+      value = value(:,cam.latind);
+      value = value(cam.lonind,:);
 
-       % TODO: I get a few weird values for dex using this
-       % approach, though it is smoother across land-ocean
-       % boundaries than the deltaD/delta18O of QFLX.
-       % Should we 
-       %    - smooth local anomalies in space?
-       %    - use QFLX instead of PRECT away from Antarctica?
-       %    - restrict dex to reasonable values (|dex|<60 per mil?)
-       
+      maxmin2d(value)
+      whos value
+
+     case {'DO18QFX  '}
+
+      % compute deltaD of surface fluxes based on the isotopic
+      % content of precipitation.  Probably okay for sea
+      % ice/antarctica.  Should revisit for land areas north of antarctica.
+      % interpolate in time from montly average climatology.
+      %  This will let the forcings be smaooth from month to month
+      time = double(ncread(cam.nc_cam_h0,'time'));
+      prect = squeeze(interp1(time, ...
+                              permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
+                              target_time,'linear','extrap'));
+      try prect_in = ncread(cam.nc_cam_h0,'PRECT_H218OR');
+      catch
+        prect_in = ncread(cam.nc_cam_h0,'PRECT_H218O');
+      end
+      prect_H218O = squeeze(interp1(time,permute(double(prect_in),[3 1 2]), ...
+                                    target_time,'linear','extrap'));
+
+      value = 1000*( (prect_H218O-prect)./(eps + prect) );
+
+      % trim to size
+      value = value(:,cam.latind);
+      value = value(cam.lonind,:);
+
+      % TODO: I get a few weird values for dex using this
+      % approach, though it is smoother across land-ocean
+      % boundaries than the deltaD/delta18O of QFLX.
+      % Should we 
+      %    - smooth local anomalies in space?
+      %    - use QFLX instead of PRECT away from Antarctica?
+      %    - restrict dex to reasonable values (|dex|<60 per mil?)
+      
 % $$$        % compute deltaD of surface fluxes based on monthly mean values.
 % $$$         qflx = double(ncread(cam.nc_cam_h0,'QFLX'));
 % $$$         qflx_HDO = double(ncread(cam.nc_cam_h0,'QFLX_HDO'));
 % $$$         qflx_18O = double(ncread(cam.nc_cam_h0,'QFLX_18O'));
 
-       case {'DHDOSURF '}
-        % this applies to evaporation water, so that the value of
-        % zero seems appropriate for oceans.
-        value = zeros(size(var_in));
-       case {'D18OSURF '}
-        % this applies to evaporation water, so that the value of
-        % zero seems appropriate for oceans.
-        value = zeros(size(var_in));
+     case {'DHDOSURF '}
+      % this applies to evaporation water, so that the value of
+      % zero seems appropriate for oceans.
+      value = zeros(size(var_in));
+     case {'DO18SURF '}
+      % this applies to evaporation water, so that the value of
+      % zero seems appropriate for oceans.
+      value = zeros(size(var_in));
 
      otherwise
       value = var_in;
@@ -183,9 +209,9 @@ end
     vinfo.Name = vname;
     vinfo.Datatype = 'double';
     vinfo.Dimensions(1).Name = 'lon';
-    vinfo.Dimensions(1).Length = cam.Nlon;
+    vinfo.Dimensions(1).Length = length(cam.lonind);
     vinfo.Dimensions(2).Name = 'lat';
-    vinfo.Dimensions(2).Length = cam.Nlat;
+    vinfo.Dimensions(2).Length = length(cam.latind);
 
     % add attributes for this variable
     ii = 1;

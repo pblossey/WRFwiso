@@ -99,9 +99,9 @@ for m = 1:length(cam.wh2D)
     vinfo.Name = vname;
     vinfo.Datatype = 'double';
     vinfo.Dimensions(1).Name = 'lon';
-    vinfo.Dimensions(1).Length = cam.Nlon;
+    vinfo.Dimensions(1).Length = length(cam.lonind);
     vinfo.Dimensions(2).Name = 'lat';
-    vinfo.Dimensions(2).Length = cam.Nlat;
+    vinfo.Dimensions(2).Length = length(cam.latind);
 
     % add attributes for this variable
     ii = 1;
