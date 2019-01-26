@@ -115,13 +115,23 @@ end
 
      case {'DHDOQFX  '}
 
-      % compute delta18O of surface fluxes based on the isotopic
-      % content of precipitation from a monthly climatology.  
-      % Probably okay for sea ice/antarctica.  
-      %  Should revisit for land areas north of antarctica.
-
-      % interpolate in time from montlhy average climatology.
-      %  This will let the forcings be smaooth from month to month
+      % compute a potential value for the deltaD of surface fluxes
+      %   in two different ways:
+      %     - based on the isotopic content of precipitation,
+      %     - based on the isotopic content of near-surface soil
+      %           water and snow cover.  
+      % Here, we are implicitly assuming a non-fractionating flux
+      % of water from the land surface into the atmosphere.  This
+      % should work for ice-covered surfaces (sea ice/polar land) and
+      % places where most of the surface moisture flux is transpiration.
+      % We are interpolating from monthly averages or a monthly
+      % climatology, which will keep the forcings be smaooth from
+      % month to month. 
+      %
+      %  Ideally, we would compute this from the climatology of the
+      %  upwards surface moisture flux for both standard water and
+      %  its isotopic variants, but people mostly output the net
+      %  moisture flux and often neglect to output the isotopic fluxes.
       time = double(ncread(cam.nc_cam_h0,'time'));
       prect = squeeze(interp1(time, ...
                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
@@ -131,29 +141,59 @@ end
         prect_in = ncread(cam.nc_cam_h0,'PRECT_HDO');
       end
       prect_HDO = squeeze(interp1(time,permute(double(prect_in),[3 1 2]), ...
-                                  target_time,'linear','extrap'));
+                                    target_time,'linear','extrap'));
 
-      maxmin2d(prect)
-      maxmin2d(prect_HDO)
-      
       value = 1000*( (prect_HDO-prect)./(eps + prect) );
-
-      maxmin2d(value)
 
       % trim to size
       value = value(:,cam.latind);
       value = value(cam.lonind,:);
 
-      maxmin2d(value)
-      whos value
+      % SOIL WATER AND SNOW
+      time = double(ncread(cam.nc_cam_h0,'time'));
+      skip_soilsnow = false;
+      try soilsnow = ncread(cam.nc_clm_h0,'SNOWLIQ_H2OTR') ...
+            + ncread(cam.nc_clm_h0,'SNOWICE_H2OTR') ...
+            + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_H2OTR');
+      catch
+        skip_soilsnow = true;
+      end
+
+      if ~skip_soilsnow
+        soilsnow_HDO = ncread(cam.nc_clm_h0,'SNOWLIQ_HDO') ...
+            + ncread(cam.nc_clm_h0,'SNOWICE_HDO') ...
+            + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_HDO');
+        value_SOILSNOW = 1000*( (soilsnow_HDO-soilsnow)./(eps + soilsnow) );
+
+        value_SOILSNOW(soilsnow==0) = NaN;
+
+        % trim to size
+        value_SOILSNOW = value_SOILSNOW(:,cam.latind);
+        value_SOILSNOW = value_SOILSNOW(cam.lonind,:);
+
+        ind = find(~isnan(value_SOILSNOW));
+        value(ind) = value_SOILSNOW(ind);
+      end
 
      case {'DO18QFX  '}
 
-      % compute deltaD of surface fluxes based on the isotopic
-      % content of precipitation.  Probably okay for sea
-      % ice/antarctica.  Should revisit for land areas north of antarctica.
-      % interpolate in time from montly average climatology.
-      %  This will let the forcings be smaooth from month to month
+      % compute a potential value for the deltaD of surface fluxes
+      %   in two different ways:
+      %     - based on the isotopic content of precipitation,
+      %     - based on the isotopic content of near-surface soil
+      %           water and snow cover.  
+      % Here, we are implicitly assuming a non-fractionating flux
+      % of water from the land surface into the atmosphere.  This
+      % should work for ice-covered surfaces (sea ice/polar land) and
+      % places where most of the surface moisture flux is transpiration.
+      % We are interpolating from monthly averages or a monthly
+      % climatology, which will keep the forcings be smaooth from
+      % month to month. 
+      %
+      %  Ideally, we would compute this from the climatology of the
+      %  upwards surface moisture flux for both standard water and
+      %  its isotopic variants, but people mostly output the net
+      %  moisture flux and often neglect to output the isotopic fluxes.
       time = double(ncread(cam.nc_cam_h0,'time'));
       prect = squeeze(interp1(time, ...
                               permute(double(ncread(cam.nc_cam_h0,'PRECT')),[3 1 2]), ...
@@ -171,18 +211,31 @@ end
       value = value(:,cam.latind);
       value = value(cam.lonind,:);
 
-      % TODO: I get a few weird values for dex using this
-      % approach, though it is smoother across land-ocean
-      % boundaries than the deltaD/delta18O of QFLX.
-      % Should we 
-      %    - smooth local anomalies in space?
-      %    - use QFLX instead of PRECT away from Antarctica?
-      %    - restrict dex to reasonable values (|dex|<60 per mil?)
-      
-% $$$        % compute deltaD of surface fluxes based on monthly mean values.
-% $$$         qflx = double(ncread(cam.nc_cam_h0,'QFLX'));
-% $$$         qflx_HDO = double(ncread(cam.nc_cam_h0,'QFLX_HDO'));
-% $$$         qflx_18O = double(ncread(cam.nc_cam_h0,'QFLX_18O'));
+      % SOIL WATER AND SNOW
+      time = double(ncread(cam.nc_cam_h0,'time'));
+      skip_soilsnow = false;
+      try soilsnow = ncread(cam.nc_clm_h0,'SNOWICE_H2OTR') ...
+            + ncread(cam.nc_clm_h0,'SNOWICE_H2OTR') ...
+            + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_H2OTR');
+      catch
+        skip_soilsnow = true;
+      end
+
+      if ~skip_soilsnow
+        soilsnow_H218O = ncread(cam.nc_clm_h0,'SNOWICE_H218O') ...
+            + ncread(cam.nc_clm_h0,'SNOWICE_H218O') ...
+            + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_H218O');
+        value_SOILSNOW = 1000*( (soilsnow_H218O-soilsnow)./(eps + soilsnow) );
+
+        value_SOILSNOW(soilsnow==0) = NaN;
+
+        % trim to size
+        value_SOILSNOW = value_SOILSNOW(:,cam.latind);
+        value_SOILSNOW = value_SOILSNOW(cam.lonind,:);
+
+        ind = find(~isnan(value_SOILSNOW));
+        value(ind) = value_SOILSNOW(ind);
+      end
 
      case {'DHDOSURF '}
       % this applies to evaporation water, so that the value of
