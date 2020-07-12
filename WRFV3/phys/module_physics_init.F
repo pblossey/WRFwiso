@@ -71,6 +71,7 @@ CONTAINS
                          ACSNOM,IVGTYP,ISLTYP, SFCEVP, SMOIS,    &
                          SH2O, SNOWH, SMFR3D,                    &  ! temporary
                          SNOALB,                                 &
+                         HDO_SFCEVP, O18_SFCEVP,                 & !bloss/wiso/qfx (NOAH LSM ONLY)
                          DX,DY,F_ICE_PHY,F_RAIN_PHY,F_RIMEF_PHY, &
                          mp_restart_state,tbpvs_state,tbpvs0_state,&
                          allowed_to_read, moved, start_of_simulation,&
@@ -301,7 +302,10 @@ CONTAINS
                                                          XICEM, &
                                                         VEGFRA, &
                                                         ACSNOM
-   REAL,    DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT) ::   rliq    
+   REAL,    DIMENSION( ims:ime, jms:jme ), OPTIONAL, INTENT(INOUT) ::   rliq, &
+                                                     HDO_SFCEVP, &  !bloss/wiso/qfx (NOAH LSM ONLY)
+                                                     O18_SFCEVP     !bloss/wiso/qfx (NOAH LSM ONLY)
+
 
    REAL,    DIMENSION( ims:ime, jms:jme )                     , &
             OPTIONAL, INTENT(INOUT)    ::                ACHFX, &
@@ -1126,6 +1130,7 @@ integer myproc
 #endif
                 QKE,                                            &
                 SFCEVP,GRDFLX,                                  &
+                hdo_sfcevp, o18_sfcevp,                         & !bloss/wiso/qfx
                 TRIM (MMINLU_LOC),                              &
                 ISNOWXY, ZSNSOXY, TSNOXY,                       &
                 SNICEXY, SNLIQXY, TVXY, TGXY, CANICEXY,         &
@@ -2039,6 +2044,7 @@ integer myproc
                 ZNT,XLAND,XICE,DX, DY, MSFTX, MSFTY,            &
 #endif
                 QKE, SFCEVP,GRDFLX,                             &
+                HDO_SFCEVP, O18_SFCEVP,                         & !bloss/wiso/qfx
                 MMINLU,                                         &
                 ISNOWXY, ZSNSOXY, TSNOXY,                       &
                 SNICEXY, SNLIQXY, TVXY, TGXY, CANICEXY,         &
@@ -2264,6 +2270,8 @@ integer myproc
                                                         ISLTYP, &
                                                         LOWLYR
 
+   REAL,    DIMENSION( ims:ime, jms:jme )                     , &
+            INTENT(INOUT), OPTIONAL    ::     HDO_SFCEVP, O18_SFCEVP !bloss/wiso/qfx
 
    REAL,     DIMENSION(1:num_soil_layers), INTENT(INOUT)  ::  ZS,DZS
 
@@ -2577,6 +2585,26 @@ integer myproc
         ACLHF(i,j)=0.
         ACGRDFLX(i,j)=0.
         SFCEVP(i,j)=0.
+     ENDDO
+     ENDDO
+   ENDIF
+   ENDIF
+
+   IF(PRESENT(HDO_SFCEVP))THEN
+   IF(.not.restart)THEN
+     DO j=jts,jte
+     DO i=its,ite
+      HDO_SFCEVP(i,j)=0. !bloss/wiso/qfx
+     ENDDO
+     ENDDO
+   ENDIF
+   ENDIF
+
+   IF(PRESENT(O18_SFCEVP))THEN
+   IF(.not.restart)THEN
+     DO j=jts,jte
+     DO i=its,ite
+      O18_SFCEVP(i,j)=0. !bloss/wiso/qfx
      ENDDO
      ENDDO
    ENDIF
