@@ -31,6 +31,7 @@ CONTAINS
      &          ,qfx_pos,hdo_qfx_pos,o18_qfx_pos                      & !bloss/wiso/qfx partition
      &          ,qfx_neg,hdo_qfx_neg,o18_qfx_neg                      & !bloss/wiso/qfx partition
      &          ,raincv,rho,sfcevp,sfcexc,sfcrunoff,acrunoff          &
+     &          ,hdo_sfcevp,o18_sfcevp                                & !bloss/wiso/qfx
      &          ,smois,smstav,smstot,snoalb,snow,snowc,snowh,stepbl   &
      &          ,smcrel                                               &
      &          ,th10,th2,thz0,th_phy,tmn,tshltr,tsk,tslb             &
@@ -833,6 +834,7 @@ CONTAINS
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(OUT)::   PSFC
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   ACSNOM
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)::   SFCEVP
+   REAL, DIMENSION( ims:ime, jms:jme ), INTENT(INOUT), OPTIONAL ::   HDO_SFCEVP, O18_SFCEVP !bloss/wiso
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT),OPTIONAL ::   ACHFX
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT),OPTIONAL ::   ACLHF
    REAL, DIMENSION( ims:ime, jms:jme ) , INTENT(INOUT),OPTIONAL ::   ACGRDFLX
@@ -2803,8 +2805,13 @@ CONTAINS
                      O18_QFX(I,J) = R_O18_QFX(I,J)*qfx(i,j)
                   ELSE
                      ! Downward moisture flux -- assume isotopic content is same as lowest-level vapor
-                     HDO_QFX(I,J) = QFX(I,J)*HDO_QV(I,LOWLYR(I,J),J)/QV_CURR(I,LOWLYR(I,J),J)
-                     O18_QFX(I,J) = QFX(I,J)*O18_QV(I,LOWLYR(I,J),J)/QV_CURR(I,LOWLYR(I,J),J)
+                     !    bloss(2019-02-26): Handle small/negative values of QV and bound isotope ratio at 2.
+                     !    This should keep strange things from happening when QV goes to zero
+                     !    and the moisture flux (QFX) is still downwards.
+                     HDO_QFX(I,J) = QFX(I,J)*MIN(2., HDO_QV(I,LOWLYR(I,J),J) &
+                                                   /MAX(1.e-10,QV_CURR(I,LOWLYR(I,J),J) ) )
+                     O18_QFX(I,J) = QFX(I,J)*MIN(2., O18_QV(I,LOWLYR(I,J),J) &
+                                                   /MAX(1.e-10,QV_CURR(I,LOWLYR(I,J),J) ) )
                   END IF
 
                  ! now, derive the surface value based on the flux and the surface transfer coefficient
@@ -2900,6 +2907,21 @@ CONTAINS
                IF(PRESENT(ACGRDFLX))ACGRDFLX(I,J)=ACGRDFLX(I,J) + GRDFLX(I,J)*DT
            ENDDO
            ENDDO
+           IF(PRESENT(HDO_QFX).AND.PRESENT(HDO_SFCEVP)) THEN
+           DO j=j_start(ij),j_end(ij)
+           DO i=i_start(ij),i_end(ij)
+               HDO_SFCEVP(I,J)= HDO_SFCEVP(I,J) + HDO_QFX(I,J)*DTBL !bloss/wiso
+           ENDDO
+           ENDDO
+           END IF
+           IF(PRESENT(O18_QFX).AND.PRESENT(O18_SFCEVP)) THEN
+           DO j=j_start(ij),j_end(ij)
+           DO i=i_start(ij),i_end(ij)
+               O18_SFCEVP(I,J)= O18_SFCEVP(I,J) + O18_QFX(I,J)*DTBL !bloss/wiso
+           ENDDO
+           ENDDO
+           END IF
+
 
           CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
                      PSFC,CP,R_d,RCP,CHS,t_phy,qv_curr,ua_phys,    &
