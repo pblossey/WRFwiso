@@ -393,13 +393,41 @@ CONTAINS
                 O18_QSFC(I,J) = QSFC(I,J) * R_O18_SURF_OCN(I,J)
               END IF
 
-              ! Express QZ0 as a linear combination of QSFC and QLOW,
-              !   i.e., QZ0 = QLOW + Z0fac * (QSFC - QLOW)
-              IF(QSFC(I,J).EQ.QLOW) THEN
-                Z0fac = 1. ! Assume QZ0 takes on the surface value in this (unlikely) situation
-              ELSE
+              ! Note that QFX = COEF*(QZ0 - QLOW)
+              !   We want to express the isotopic fluxes in an equivalent way as (for example)
+              !           HDO_QFX = COEF*Kfac_HDO*(HDO_QZ0 - HDO_QLOW)
+              !   where Kfac_HDO is the kinetic fractionation factor from Merlivat & Jouzel (1979)
+              !   or a similar parametrization.
+              !
+              !   Note that we only have HDO_QSFC but not HDO_QZ0 in
+              !   the case of the isotopes.  Within SFCDIF, QZ0 is
+              !   computed as a linear combination of QSFC, QLOW and
+              !   past values of QZ0.  We are resistant to doing the
+              !   same for HDO and O18, so that we will instead compute
+              !       HDO_QZ0 = HDO_QLOW + Z0fac * (HDO_QSFC - HDO_QLOW)
+              !   using the value of Z0fac from the formula:
+              !       QZ0 = QLOW + Z0fac * (QSFC - QLOW)
+
+              !   However, since this formula is singular and can
+              !   produce spurious isotope fluxes when QSFC-QLOW is
+              !   small, we will set Z0fac to one when |QSFC-QLOW| is
+              !   less than half as large as the min of |QZ0-QLOW|
+              !   and |HDO_QSFC - HDO_QLOW|.
+              IF( ( ABS(QSFC(I,J)-QLOW).LT.1.e-7 ) &
+                  .OR.( ABS(QSFC(I,J)-QLOW).LT.0.5*ABS(QZ0(I,J)-QLOW) ) &
+                  .OR.( ABS(QSFC(I,J)-QLOW).LT.0.5*ABS(HDO_QSFC(I,J)-HDO_QLOW) ) ) THEN
+                   ! To avoid spurious isotope fluxes when QSFC is close to QLOW, choose z0fac = 1
+                Z0fac = 1. 
+             ELSE
+                ! This should make the isotopic fluxes exactly equivalent to the standard ones.
                 Z0fac = ( QZ0(I,J) - QLOW ) / ( QSFC(I,J) - QLOW )
-              END IF
+             END IF
+
+!bloss              IF(QSFC(I,J).EQ.QLOW) THEN
+!bloss                Z0fac = 1. ! Assume QZ0 takes on the surface value in this (unlikely) situation
+!bloss              ELSE
+!bloss                Z0fac = ( QZ0(I,J) - QLOW ) / ( QSFC(I,J) - QLOW )
+!bloss              END IF
 
             ELSE
               ! land:  First, QZ0==QSFC, so Z0fac = 1.
@@ -429,7 +457,7 @@ CONTAINS
             height = zsl
             kfac_HDO = SurfaceFractionationCoefficient('Merlivat', windspeed, temperature, density, height, 19)
             kfac_O18 = SurfaceFractionationCoefficient('Merlivat', windspeed, temperature, density, height, 20)
-            write(*,992) windspeed, temperature, density, height, kfac_hdo, kfac_o18
+!bloss            write(*,992) windspeed, temperature, density, height, kfac_hdo, kfac_o18
             992 format('WS = ',F8.3,' T = ',F8.3,' RHO = ',F6.3,' ZLOW = ',F8.3,' KFAC(HDO/O18) = ',2F7.4)
             
             !bloss/wiso: Turn off kinetic fractionation in testing runs without fractionation
