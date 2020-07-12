@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N AntarcWISO_preprocess
+#PBS -N AntarcWISO_preprocess_1853-01
 #PBS -A UWAS0052
 #PBS -l walltime=12:00:00
 #PBS -q economy
@@ -8,24 +8,31 @@
 #PBS -M pblossey@uw.edu
 #PBS -l select=1:ncpus=1:mpiprocs=1
 
+DATETAG=1853-01
+
 # set to 2 for 45km outer domain with a 15km nest
 # set to 3 to add a 5km nest over West Antarctica
 NUM_DOMAINS=2
 
-SYY=2015
-SMM=1
-SDD=1
+SYY=1852
+SMM=12
+SDD=31
 
-EYY=2015
+EYY=1853
 EMM=1
 EDD=31
 
+LAT_MIN=-100
+LAT_MAX=-30
+LON_MIN=-400
+LON_MAX=400
+
 TODAY=`date --iso-8601`
 
-RUNNAME=nudge_1deg_llnl_base
-H0TAG=2015-2017
+RUNNAME=topoPI_oceanPI_forcingPI
+H0TAG=climo.1853-1869
 
-BASEDIR=/glade/u/home/pblossey/scratch/WAIS/WRFwiso-2015Jan
+BASEDIR=/glade/u/home/pblossey/scratch/WAIS/TopoiCESM/TopoPI_OceanPI/WRFwiso_TopoPI_OceanPI_${DATETAG}/
 
 ### Set TMPDIR as recommended
 export TMPDIR=/glade/scratch/$USER/temp
@@ -33,7 +40,13 @@ mkdir -p $TMPDIR
 
 cd $BASEDIR
 
-# load modules for intel/netcdf setup
+## load modules for intel/netcdf setup -- swap to Intel 18.0.5
+#source /etc/profile.d/modules.sh
+#module unload intel netcdf mpt
+#module load intel/18.0.5 mpt/2.18 netcdf/4.6.1
+#module list
+
+# also load matlab and nc operator modules
 module load matlab nco
 
 # clean up folder with WPS Intermediate format files from CESM
@@ -54,14 +67,34 @@ if [ ! -d GCMOutput ]; then
   exit 9
 fi
 
+SCRIPTNAME=matlab_script_$(printf %04d $SYY)_$(printf %02d $SMM)_$(printf %02d $SDD).m
+echo ${SCRIPTNAME}
+rm -f ${SCRIPTNAME}
+
 echo " ***** Convert from CESM output to WPS-ready netcdf ***** "
-for file in `ls GCMOutput/${RUNNAME}.cam.h1.$(printf %04d $SYY)-$(printf %02d $SMM)*.nc GCMOutput/*.cam.h1.$(printf %04d $EYY)-$(printf %02d $EMM)*.nc`
+for file in `ls GCMOutput/${RUNNAME}.cam.h1.$(printf %04d $SYY)-$(printf %02d $SMM)*.nc`
 do
   file2=`echo ${file} | sed "s/GCMOutput\///g; s/@//g"`
   echo ${file} ${file2}
-  matlab -nodesktop -nosplash -nodisplay -r "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${SYY},${SMM},${SDD},${EYY},${EMM},${EDD}); exit" # &> log.matlab
-  exit 9
+  echo "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${LAT_MIN},${LAT_MAX},${LON_MIN},${LON_MAX},${SYY},${SMM},${SDD},${EYY},${EMM},${EDD})" >> ${SCRIPTNAME}
+##  matlab -nodesktop -nosplash -nodisplay -r "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${LAT_MIN},${LAT_MAX},${LON_MIN},${LON_MAX},${SYY},${SMM},${SDD},${EYY},${EMM},${EDD}); exit" &>> log.matlab
+##  matlab -nodesktop -nosplash -nodisplay -r "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${SYY},${SMM},${SDD},${EYY},${EMM},${EDD}); exit" &> log.matlab
 done
+
+if [ ! $SYY -eq $EYY ] || [ ! $SMM -eq $EMM ]
+then
+    for file in `ls GCMOutput/*.cam.h1.$(printf %04d $EYY)-$(printf %02d $EMM)*.nc`
+    do
+	file2=`echo ${file} | sed "s/GCMOutput\///g; s/@//g"`
+	echo ${file} ${file2}
+  echo "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${LAT_MIN},${LAT_MAX},${LON_MIN},${LON_MAX},${SYY},${SMM},${SDD},${EYY},${EMM},${EDD})" >> ${SCRIPTNAME}
+##	matlab -nodesktop -nosplash -nodisplay -r "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${LAT_MIN},${LAT_MAX},${LON_MIN},${LON_MAX},${SYY},${SMM},${SDD},${EYY},${EMM},${EDD}); exit" &>> log.matlab
+##	matlab -nodesktop -nosplash -nodisplay -r "CESM2WPSNetcdf('CESM','${RUNNAME}','${H0TAG}','${file2}',${SYY},${SMM},${SDD},${EYY},${EMM},${EDD}); exit" &> log.matlab
+    done
+fi
+
+matlab -nodesktop -nosplash -nodisplay -r "try run('${SCRIPTNAME}'); catch exit; end; exit" ##&>> log.${SCRIPTNAME}
+
 popd
 
 # compile the fortran program that converts this WPS-ready netcdf into binary WPS intermediate format
@@ -125,3 +158,5 @@ ln -sf ../../../WPS/met_em* .
 mpiexec_mpt dplace -s 1 ./real.exe > log_real_${TODAY}
 
 popd
+
+qsub run_wrf.bash
