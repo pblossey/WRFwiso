@@ -120,16 +120,59 @@ name=XICE ; output_name=SEAICE  # If we get XICE, use entry from SEAICE and
                                 #   write the field out as SEAICE
 ========================================
 name=SEAICE 
-        interp_option=four_pt+average_4pt
+        interp_option=four_pt+wt_average_4pt+search
         interp_mask=LANDSEA(1) 
         masked=land
         missing_value=-1.E30
         fill_missing=0.
 ========================================
+name=OCNFRAC  #bloss: Added to handle sea ice fraction near coasts
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=SIFRAC   #bloss: Added to handle sea ice fraction near coasts
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=WGTSNOWSI  #bloss: Added to properly import snow on sea ice from CESM.
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=WGTSIDPTH  #bloss: Added to properly import sea ice depth from CESM.
+        interp_option=four_pt+wt_average_4pt+search
+        interp_mask=LANDSEA(1) 
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+========================================
+name=ICEDEPTH
+        interp_option=four_pt+wt_average_4pt
+        interp_mask=LANDSEA(1)
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+        flag_in_output=FLAG_ICEDEPTH
+========================================
+name=SNOWSI
+        interp_option=four_pt+wt_average_4pt
+        interp_mask=LANDSEA(1)
+        masked=land
+        missing_value=-1.E30
+        fill_missing=0.
+        flag_in_output=FLAG_SNOWSI
+========================================
 name=SNOW
         interp_option=four_pt+average_4pt
         masked=water 
-        interp_mask=LANDSEA(0)
         fill_missing=0.
         flag_in_output=FLAG_SNOW
 ========================================
@@ -634,9 +677,11 @@ mpas_name=uReconstructMeridional
         fill_lev=200100:const(-1.E30)
 ========================================
 name=SST
-        interp_option=sixteen_pt+four_pt
-        fill_missing=0.
-        missing_value=-1.E30
+        interp_option=sixteen_pt+four_pt+wt_average_4pt+search(20)
+        interp_mask=LANDSEA(1)
+        masked=land
+        missing_value=-1.E+30
+        fill_missing=0. 
         flag_in_output=FLAG_SST
 ========================================
 name=QV
@@ -733,7 +778,6 @@ name=HGTT
 name=SNOWH
         interp_option=four_pt+average_4pt
         masked=water 
-        interp_mask=LANDSEA(0)
         fill_missing=0.
         flag_in_output=FLAG_SNOWH
 ========================================
