@@ -3868,6 +3868,24 @@ BENCH_START(micro_driver_tim)
       &        , O18_ICE_AUTO=grid%o18_ice_auto, O18_ICE_COLL=grid%o18_ice_coll       & !bloss/Thompson diagnostics
       &        , O18_ICE_RIM=grid%o18_ice_rim, O18_VAP_CLD=grid%o18_vap_cld, O18_PCP_SED=grid%o18_pcp_sed       & !bloss/Thompson diagnostics
       &        , O18_PCP_DEP=grid%o18_pcp_dep, O18_PCP_SUB=grid%o18_pcp_sub, O18_PCP_REVP=grid%o18_pcp_revp       & !bloss/Thompson diagnostics
+      &        , VAPORWP=grid%vaporwp, HDO_VAPORWP=grid%hdo_vaporwp, O18_VAPORWP=grid%o18_vaporwp & !bloss/Thompson wiso diagnostics
+      &        , CLIQWP=grid%cliqwp, HDO_CLIQWP=grid%hdo_cliqwp, O18_CLIQWP=grid%o18_cliqwp & !bloss/Thompson wiso diagnostics
+      &        , CICEWP=grid%cicewp, HDO_CICEWP=grid%hdo_cicewp, O18_CICEWP=grid%o18_cicewp & !bloss/Thompson wiso diagnostics
+      &        , RAINWP=grid%rainwp, HDO_RAINWP=grid%hdo_rainwp, O18_RAINWP=grid%o18_rainwp & !bloss/Thompson wiso diagnostics
+      &        , SNOWWP=grid%snowwp, HDO_SNOWWP=grid%hdo_snowwp, O18_SNOWWP=grid%o18_snowwp & !bloss/Thompson wiso diagnostics
+      &        , GRAUWP=grid%grauwp, HDO_GRAUWP=grid%hdo_grauwp, O18_GRAUWP=grid%o18_grauwp & !bloss/Thompson wiso diagnostics
+      &        , QVLOW=grid%qvlow, HDO_QVLOW=grid%hdo_qvlow, O18_QVLOW=grid%o18_qvlow & !bloss/Thompson wiso diagnostics
+      &        , IWTX=grid%iwtx, HDO_IWTX=grid%hdo_iwtx, O18_IWTX=grid%o18_iwtx & !bloss/Thompson wiso diagnostics
+      &        , IWTY=grid%iwty, HDO_IWTY=grid%hdo_iwty, O18_IWTY=grid%o18_iwty & !bloss/Thompson wiso diagnostics
+      &        , CLOUDTOPHGT=grid%cloudtophgt, ECHOTOPHGT=grid%echotophgt &  !bloss/Thompson wiso diagnostics
+      &        , HGT850=grid%hgt850, XVEL850=grid%xvel850, YVEL850=grid%yvel850, ZVEL850=grid%zvel850 &  !bloss circulation diagnostics
+      &        , THETA850=grid%theta850, QV850=grid%qv850, HDO_QV850=grid%hdo_qv850, O18_QV850=grid%o18_qv850 &  !bloss circulation diagnostics
+      &        , HGT700=grid%hgt700, XVEL700=grid%xvel700, YVEL700=grid%yvel700, ZVEL700=grid%zvel700 &  !bloss circulation diagnostics
+      &        , THETA700=grid%theta700, QV700=grid%qv700, HDO_QV700=grid%hdo_qv700, O18_QV700=grid%o18_qv700 &  !bloss circulation diagnostics
+      &        , HGT500=grid%hgt500, XVEL500=grid%xvel500, YVEL500=grid%yvel500, ZVEL500=grid%zvel500 &  !bloss circulation diagnostics
+      &        , THETA500=grid%theta500, QV500=grid%qv500, HDO_QV500=grid%hdo_qv500, O18_QV500=grid%o18_qv500 &  !bloss circulation diagnostics
+      &        , HGT200=grid%hgt200, XVEL200=grid%xvel200, YVEL200=grid%yvel200, ZVEL200=grid%zvel200 &  !bloss circulation diagnostics
+      &        , THETA200=grid%theta200, QV200=grid%qv200, HDO_QV200=grid%hdo_qv200, O18_QV200=grid%o18_qv200 &  !bloss circulation diagnostics
       &        , qrcuten=grid%rqrcuten, qscuten=grid%rqscuten             &
       &        , qicuten=grid%rqicuten, qccuten=grid%rqccuten             &
       &        , HAIL=config_flags%gsfcgce_hail                           & ! for gsfcgce
