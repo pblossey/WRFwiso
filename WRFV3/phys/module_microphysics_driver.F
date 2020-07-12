@@ -89,6 +89,20 @@ SUBROUTINE microphysics_driver(                                          &
                       ,O18_LIQ_AUTO, O18_LIQ_COLL, O18_ICE_AUTO, O18_ICE_COLL & !bloss/wiso: thompiso tendencies
                       ,O18_ICE_RIM, O18_VAP_CLD, O18_PCP_SED & !bloss/wiso: thompiso tendencies
                       ,O18_PCP_DEP, O18_PCP_SUB, O18_PCP_REVP & !bloss/wiso: thompiso tendencies
+                      ,VAPORWP, HDO_VAPORWP, O18_VAPORWP & !bloss/Thompson wiso diagnostics
+                      ,CLIQWP, HDO_CLIQWP, O18_CLIQWP & !bloss/Thompson wiso diagnostics
+                      ,CICEWP, HDO_CICEWP, O18_CICEWP & !bloss/Thompson wiso diagnostics
+                      ,RAINWP, HDO_RAINWP, O18_RAINWP & !bloss/Thompson wiso diagnostics
+                      ,SNOWWP, HDO_SNOWWP, O18_SNOWWP & !bloss/Thompson wiso diagnostics
+                      ,GRAUWP, HDO_GRAUWP, O18_GRAUWP & !bloss/Thompson wiso diagnostics
+                      ,QVLOW, HDO_QVLOW, O18_QVLOW & !bloss/Thompson wiso diagnostics
+                      ,IWTX, HDO_IWTX, O18_IWTX & !bloss/Thompson wiso diagnostics
+                      ,IWTY, HDO_IWTY, O18_IWTY & !bloss/Thompson wiso diagnostics
+                      ,CLOUDTOPHGT, ECHOTOPHGT &  !bloss/Thompson wiso diagnostics
+                      ,HGT850, XVEL850, YVEL850, ZVEL850, THETA850, QV850, HDO_QV850, O18_QV850 & !bloss circulation diagnostics
+                      ,HGT700, XVEL700, YVEL700, ZVEL700, THETA700, QV700, HDO_QV700, O18_QV700 & !bloss circulation diagnostics
+                      ,HGT500, XVEL500, YVEL500, ZVEL500, THETA500, QV500, HDO_QV500, O18_QV500 & !bloss circulation diagnostics
+                      ,HGT200, XVEL200, YVEL200, ZVEL200, THETA200, QV200, HDO_QV200, O18_QV200 & !bloss circulation diagnostics
 #if ( WRF_CHEM == 1 )
                       ,rainprod, evapprod                                &
                       ,qv_b4mp, qc_b4mp, qi_b4mp, qs_b4mp                &
@@ -511,6 +525,27 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,O18_ICE_RIM, O18_VAP_CLD, O18_PCP_SED & !bloss/wiso: thompiso tendencies
                  ,O18_PCP_DEP, O18_PCP_SUB, O18_PCP_REVP !bloss/wiso: thompiso tendencies
 
+!bloss: Added diagnostics for Thompson microphysics and water
+!  isotopologues that provides some (limited) information about the
+!  vapor/cloud/precipitation fields and water transport in the case when
+!  the output of full 3D fields is prohibitive in terms of storgage.
+   REAL, DIMENSION( ims:ime, jms:jme ),                  &
+         OPTIONAL,                                                &
+         INTENT(INOUT ) ::                                        &
+                       VAPORWP, HDO_VAPORWP, O18_VAPORWP & !bloss/Thompson wiso diagnostics
+                      ,CLIQWP, HDO_CLIQWP, O18_CLIQWP & !bloss/Thompson wiso diagnostics
+                      ,CICEWP, HDO_CICEWP, O18_CICEWP & !bloss/Thompson wiso diagnostics
+                      ,RAINWP, HDO_RAINWP, O18_RAINWP & !bloss/Thompson wiso diagnostics
+                      ,SNOWWP, HDO_SNOWWP, O18_SNOWWP & !bloss/Thompson wiso diagnostics
+                      ,GRAUWP, HDO_GRAUWP, O18_GRAUWP & !bloss/Thompson wiso diagnostics
+                      ,QVLOW, HDO_QVLOW, O18_QVLOW & !bloss/Thompson wiso diagnostics
+                      ,IWTX, HDO_IWTX, O18_IWTX & !bloss/Thompson wiso diagnostics
+                      ,IWTY, HDO_IWTY, O18_IWTY & !bloss/Thompson wiso diagnostics
+                      ,CLOUDTOPHGT, ECHOTOPHGT & !bloss/Thompson wiso diagnostics
+                      ,HGT850, XVEL850, YVEL850, ZVEL850, THETA850, QV850, HDO_QV850, O18_QV850 & !bloss circulation diagnostics
+                      ,HGT700, XVEL700, YVEL700, ZVEL700, THETA700, QV700, HDO_QV700, O18_QV700 & !bloss circulation diagnostics
+                      ,HGT500, XVEL500, YVEL500, ZVEL500, THETA500, QV500, HDO_QV500, O18_QV500 & !bloss circulation diagnostics
+                      ,HGT200, XVEL200, YVEL200, ZVEL200, THETA200, QV200, HDO_QV200, O18_QV200  !bloss circulation diagnostics
 
 
    REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                  &
@@ -598,8 +633,11 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    REAL    :: z0, z1, z2, w1, w2
 
    integer, parameter :: ntot = 50
-   real :: wmin, wmax
+   real :: wmin, wmax, tmp_water_path
    integer :: ierr
+
+   real :: wgt_k, wgt_w_k, wgt_w_kp2, logp_w_k, logp_w_kp1, logp_w_kp2
+   integer :: kb, kc
 
 !---------------------------------------------------------------------
 !  check for microphysics type.  We need a clean way to
@@ -2371,10 +2409,796 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 ! ENDIF
 ! ZCX
 
+!bloss: (based on ZCX code above) Extra water path and other 2D outputs
+   IF ( PRESENT(VAPORWP) .AND. PRESENT(qv_curr) ) THEN
+      vaporwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           vaporwp,qv_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(CLIQWP) .AND. PRESENT(qc_curr) ) THEN
+      cliqwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           cliqwp,qc_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(CICEWP) .AND. PRESENT(qi_curr) ) THEN
+      cicewp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           cicewp,qi_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(RAINWP) .AND. PRESENT(qr_curr) ) THEN
+      rainwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           rainwp,qr_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(SNOWWP) .AND. PRESENT(qs_curr) ) THEN
+      snowwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           snowwp,qs_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(GRAUWP) .AND. PRESENT(qg_curr) ) THEN
+      grauwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           grauwp,qg_curr,rho,dz8w)
+   END IF
+
+
+   IF ( PRESENT(HDO_VAPORWP) .AND. PRESENT(hdo_qv) ) THEN
+      hdo_vaporwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_vaporwp,hdo_qv,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(HDO_CLIQWP) .AND. PRESENT(hdo_qc) ) THEN
+      hdo_cliqwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_cliqwp,hdo_qc,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(HDO_CICEWP) .AND. PRESENT(hdo_qi) ) THEN
+      hdo_cicewp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_cicewp,hdo_qi,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(HDO_RAINWP) .AND. PRESENT(hdo_qr) ) THEN
+      hdo_rainwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_rainwp,hdo_qr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(HDO_SNOWWP) .AND. PRESENT(hdo_qs) ) THEN
+      hdo_snowwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_snowwp,hdo_qs,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(HDO_GRAUWP) .AND. PRESENT(hdo_qg) ) THEN
+      hdo_grauwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_grauwp,hdo_qg,rho,dz8w)
+   END IF
+
+
+   IF ( PRESENT(O18_VAPORWP) .AND. PRESENT(o18_qv) ) THEN
+      o18_vaporwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_vaporwp,o18_qv,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(O18_CLIQWP) .AND. PRESENT(o18_qc) ) THEN
+      o18_cliqwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_cliqwp,o18_qc,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(O18_CICEWP) .AND. PRESENT(o18_qi) ) THEN
+      o18_cicewp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_cicewp,o18_qi,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(O18_RAINWP) .AND. PRESENT(o18_qr) ) THEN
+      o18_rainwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_rainwp,o18_qr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(O18_SNOWWP) .AND. PRESENT(o18_qs) ) THEN
+      o18_snowwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_snowwp,o18_qs,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(O18_GRAUWP) .AND. PRESENT(o18_qg) ) THEN
+      o18_grauwp(:,:) = 0.
+      CALL accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_grauwp,o18_qg,rho,dz8w)
+   END IF
+
+
+   IF ( PRESENT(QVLOW) .AND. PRESENT(qv_curr) ) THEN
+      qvlow(:,:) = 0.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               qvlow(i,j) = qv_curr(i,1,j)
+            end do
+         end do
+      end do
+   END IF
+
+
+   IF ( PRESENT(HDO_QVLOW) .AND. PRESENT(hdo_qv) ) THEN
+      hdo_qvlow(:,:) = 0.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               hdo_qvlow(i,j) = hdo_qv(i,1,j)
+            end do
+         end do
+      end do
+   END IF
+
+
+   IF ( PRESENT(O18_QVLOW) .AND. PRESENT(o18_qv) ) THEN
+      o18_qvlow(:,:) = 0.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               o18_qvlow(i,j) = o18_qv(i,1,j)
+            end do
+         end do
+      end do
+   END IF
+
+   !bloss/Thompson: integrated total water transport in x- and y-directions
+   IF ( PRESENT(iwtx) .AND. PRESENT(qv_curr) .AND. PRESENT(qc_curr) .AND. PRESENT(qi_curr) &
+        .AND. PRESENT(qr_curr) .AND. PRESENT(qs_curr) .AND. PRESENT(qg_curr) ) THEN
+      iwtx(:,:) = 0.
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qv_curr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qc_curr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qi_curr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qr_curr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qs_curr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwtx,u,qg_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(iwty) .AND. PRESENT(qv_curr) .AND. PRESENT(qc_curr) .AND. PRESENT(qi_curr) &
+        .AND. PRESENT(qr_curr) .AND. PRESENT(qs_curr) .AND. PRESENT(qg_curr) ) THEN
+      iwty(:,:) = 0.
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qv_curr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qc_curr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qi_curr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qr_curr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qs_curr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           iwty,v,qg_curr,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(hdo_iwtx) .AND. PRESENT(hdo_qv) .AND. PRESENT(hdo_qc) .AND. PRESENT(hdo_qi) &
+        .AND. PRESENT(hdo_qr) .AND. PRESENT(hdo_qs) .AND. PRESENT(hdo_qg) ) THEN
+      hdo_iwtx(:,:) = 0.
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qv,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qc,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qi,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qs,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwtx,u,hdo_qg,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(hdo_iwty) .AND. PRESENT(hdo_qv) .AND. PRESENT(hdo_qc) .AND. PRESENT(hdo_qi) &
+        .AND. PRESENT(hdo_qr) .AND. PRESENT(hdo_qs) .AND. PRESENT(hdo_qg) ) THEN
+      hdo_iwty(:,:) = 0.
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qv,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qc,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qi,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qs,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           hdo_iwty,v,hdo_qg,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(o18_iwtx) .AND. PRESENT(o18_qv) .AND. PRESENT(o18_qc) .AND. PRESENT(o18_qi) &
+        .AND. PRESENT(o18_qr) .AND. PRESENT(o18_qs) .AND. PRESENT(o18_qg) ) THEN
+      o18_iwtx(:,:) = 0.
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qv,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qc,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qi,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qr,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qs,rho,dz8w)
+      CALL accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwtx,u,o18_qg,rho,dz8w)
+   END IF
+
+   IF ( PRESENT(o18_iwty) .AND. PRESENT(o18_qv) .AND. PRESENT(o18_qc) .AND. PRESENT(o18_qi) &
+        .AND. PRESENT(o18_qr) .AND. PRESENT(o18_qs) .AND. PRESENT(o18_qg) ) THEN
+      o18_iwty(:,:) = 0.
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qv,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qc,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qi,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qr,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qs,rho,dz8w)
+      CALL accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+           kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+           o18_iwty,v,o18_qg,rho,dz8w)
+   END IF
+   
+   IF(PRESENT(CLOUDTOPHGT) .AND. PRESENT(qc_curr) .AND. PRESENT(qi_curr) ) THEN
+      cloudtophgt(:,:) = 0.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               tmp_water_path = 0.
+               do k = kte,kts,-1
+                  tmp_water_path = tmp_water_path + (qc_curr(i,k,j)+qi_curr(i,k,j))*rho(i,k,j)*dz8w(i,k,j)
+                  if(tmp_water_path.gt.1.e-3) then
+                     cloudtophgt(i,j) = MAX(cloudtophgt(i,j), z(i,k,j) )
+                     EXIT
+                  end if
+               end do
+            end do
+         end do
+      end do
+   end IF
+
+   IF(PRESENT(ECHOTOPHGT) .AND. PRESENT(qr_curr) .AND. PRESENT(qs_curr)  .AND. PRESENT(qg_curr) ) THEN
+      echotophgt(:,:) = 0.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               do k = kte,kts,-1
+                  if(qr_curr(i,k,j)+qs_curr(i,k,j)+qg_curr(i,k,j).gt.1.e-5) then
+                     echotophgt(i,j) = MAX(echotophgt(i,j), z(i,k,j) )
+                     EXIT
+                  end if
+               end do
+            end do
+         end do
+      end do
+   end IF
+
+   IF(PRESENT(HGT850).AND.PRESENT(XVEL850).AND.PRESENT(YVEL850).AND.PRESENT(ZVEL850).AND.PRESENT(THETA850).AND.PRESENT(QV850)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+! assign missing value
+      HGT850(:,:) = -99999.
+      XVEL850(:,:) = -99999.
+      YVEL850(:,:) = -99999.
+      ZVEL850(:,:) = -99999.
+      THETA850(:,:) = -99999.
+      QV850(:,:) = -99999.
+
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.850.e2) then
+! the surface pressure is above 850hPa
+                  do k = kts,kte
+                     if(p(i,k+1,j).lt.850.e2) then
+! following code in module_initialize_real.F,
+!   linear interpolation in log(pressure)
+                        wgt_k = MAX(0., MIN(1., ( log(850.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                        HGT850(i,j) = z(i,k,j) * wgt_k +  z(i,k+1,j) * (1. - wgt_k)
+                        XVEL850(i,j) = 0.5*( u(i,k,j) + u(i+1,k,j) ) * wgt_k &
+                        +  0.5*( u(i,k+1,j) + u(i+1,k+1,j)  ) * (1. - wgt_k)
+                        YVEL850(i,j) = 0.5*( v(i,k,j) + v(i,k,j+1) ) * wgt_k &
+                        +  0.5*( v(i,k+1,j) + v(i,k+1,j+1) ) * (1. - wgt_k)
+                        THETA850(i,j) = th(i,k,j) * wgt_k +  th(i,k+1,j) * (1. - wgt_k)
+                        QV850(i,j) = qv_curr(i,k,j) * wgt_k +  qv_curr(i,k+1,j) * (1. - wgt_k)
+
+
+! following code in module_initialize_real.F, linear interpolation in log(pressure)
+! assume vertical velocity levels are midway between mass levels.
+                        if((wgt_k.ge.0.5).OR.(k+2.gt.kte)) then
+! 850 hPa is closer to p(i,k,j), so interpolate between w(i,k,j) and w(i,k+1,j)
+! recompute weights for interpolation between p_k-1/2 and p_k+1/2
+                           kb = MAX(kts,k-1)
+                           logp_w_k = 0.5*(log(p(i,kb,j))+log(p(i,k,j)))
+                           logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                           wgt_w_k = MAX(0., MIN(1., ( log(850.e2) - logp_w_kp1 ) / ( logp_w_k - logp_w_kp1 ) ) )
+                           ZVEL850(i,j) = w(i,k,j) * wgt_w_k +  w(i,k+1,j) * (1. - wgt_w_k)
+
+!$$$  if(i+j.eq.5) then
+!$$$  write(*,*) '850 hPa closer to p_k --> interpolate between w_k and w_k+1'
+!$$$  write(*,*) log(p(i,k,j)), log(850.e2), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(p(i,k+1,j))
+!$$$  write(*,*) wgt_k, wgt_w_k
+!$$$  end if
+                        else
+! 850 hPa is closer to p(i,k+1,j), so interpolate between w(i,k+2,j) and w(i,k+1,j)
+                           kc = MIN(kte,k+2)
+                           logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                           logp_w_kp2 = 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+                           wgt_w_kp2 = MAX(0., MIN(1., (  logp_w_kp1 - log(850.e2)) / ( logp_w_kp1 - logp_w_kp2 ) ) )
+                           ZVEL850(i,j) = w(i,k+2,j) * wgt_w_kp2 +  w(i,k+1,j) * (1. - wgt_w_kp2)
+
+!$$$  if(i+j.eq.5) then
+!$$$  write(*,*) '850 hPa closer to p_k+1 --> interpolate between w_k+1 and w_k+2'
+!$$$  write(*,*) log(p(i,k,j)), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(850.e2), log(p(i,k+1,j)), 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+!$$$  write(*,*) wgt_k, wgt_w_kp2
+!$$$  end if
+                        end if
+                        EXIT
+                     end if
+                  end do
+               end if ! if(surfacepressure.lt.850.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HDO_QV850).AND.PRESENT(O18_QV850)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HDO_QV850(:,:) = -99999.
+      O18_QV850(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.850.e2) then
+                  !     the surface pressure is above 850hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.850.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(850.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HDO_QV850(i,j) = hdo_qv(i,k,j) * wgt_k +  hdo_qv(i,k+1,j) * (1. - wgt_k)
+                     O18_QV850(i,j) = o18_qv(i,k,j) * wgt_k +  o18_qv(i,k+1,j) * (1. - wgt_k)
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.850.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HGT700).AND.PRESENT(XVEL700).AND.PRESENT(YVEL700).AND.PRESENT(ZVEL700).AND.PRESENT(THETA700).AND.PRESENT(QV700)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HGT700(:,:) = -99999.
+      XVEL700(:,:) = -99999.
+      YVEL700(:,:) = -99999.
+      ZVEL700(:,:) = -99999.
+      THETA700(:,:) = -99999.
+      QV700(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.700.e2) then
+! the surface pressure is above 700hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.700.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(700.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HGT700(i,j) = z(i,k,j) * wgt_k +  z(i,k+1,j) * (1. - wgt_k)
+                     XVEL700(i,j) = 0.5*( u(i,k,j) + u(i+1,k,j) ) * wgt_k &
+                          +  0.5*( u(i,k+1,j) + u(i+1,k+1,j)  ) * (1. - wgt_k)
+                     YVEL700(i,j) = 0.5*( v(i,k,j) + v(i,k,j+1) ) * wgt_k &
+                          +  0.5*( v(i,k+1,j) + v(i,k+1,j+1) ) * (1. - wgt_k)
+                     THETA700(i,j) = th(i,k,j) * wgt_k +  th(i,k+1,j) * (1. - wgt_k)
+                     QV700(i,j) = qv_curr(i,k,j) * wgt_k +  qv_curr(i,k+1,j) * (1. - wgt_k)
+
+                     ! following code in module_initialize_real.F, linear interpolation in log(pressure)
+                     ! assume vertical velocity levels are midway between mass levels.
+                     if((wgt_k.ge.0.5).OR.(k+2.gt.kte)) then
+                        ! 700 hPa is closer to p(i,k,j), so interpolate between w(i,k,j) and w(i,k+1,j)
+                        ! recompute weights for interpolation between p_k-1/2 and p_k+1/2
+                        kb = MAX(kts,k-1)
+                        logp_w_k = 0.5*(log(p(i,kb,j))+log(p(i,k,j)))
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        wgt_w_k = MAX(0., MIN(1., ( log(700.e2) - logp_w_kp1 ) / ( logp_w_k - logp_w_kp1 ) ) )
+                        ZVEL700(i,j) = w(i,k,j) * wgt_w_k +  w(i,k+1,j) * (1. - wgt_w_k)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '700 hPa closer to p_k --> interpolate between w_k and w_k+1'
+!$$$                           write(*,*) log(p(i,k,j)), log(700.e2), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(p(i,k+1,j))
+!$$$                           write(*,*) wgt_k, wgt_w_k
+!$$$                        end if
+                     else
+                        ! 700 hPa is closer to p(i,k+1,j), so interpolate between w(i,k+2,j) and w(i,k+1,j)
+                        kc = MIN(kte,k+2)
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        logp_w_kp2 = 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+                        wgt_w_kp2 = MAX(0., MIN(1., (  logp_w_kp1 - log(700.e2)) / ( logp_w_kp1 - logp_w_kp2 ) ) )
+                        ZVEL700(i,j) = w(i,k+2,j) * wgt_w_kp2 +  w(i,k+1,j) * (1. - wgt_w_kp2)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '700 hPa closer to p_k+1 --> interpolate between w_k+1 and w_k+2'
+!$$$                           write(*,*) log(p(i,k,j)), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(700.e2), log(p(i,k+1,j)), 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+!$$$                           write(*,*) wgt_k, wgt_w_kp2
+!$$$                        end if
+                     end if
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.700.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HDO_QV700).AND.PRESENT(O18_QV700)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HDO_QV700(:,:) = -99999.
+      O18_QV700(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.700.e2) then
+                  !     the surface pressure is above 700hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.700.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(700.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HDO_QV700(i,j) = hdo_qv(i,k,j) * wgt_k +  hdo_qv(i,k+1,j) * (1. - wgt_k)
+                     O18_QV700(i,j) = o18_qv(i,k,j) * wgt_k +  o18_qv(i,k+1,j) * (1. - wgt_k)
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.700.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HGT500).AND.PRESENT(XVEL500).AND.PRESENT(YVEL500).AND.PRESENT(ZVEL500).AND.PRESENT(THETA500).AND.PRESENT(QV500)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HGT500(:,:) = -99999.
+      XVEL500(:,:) = -99999.
+      YVEL500(:,:) = -99999.
+      ZVEL500(:,:) = -99999.
+      THETA500(:,:) = -99999.
+      QV500(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.500.e2) then
+                  !     the surface pressure is above 500hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.500.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(500.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HGT500(i,j) = z(i,k,j) * wgt_k +  z(i,k+1,j) * (1. - wgt_k)
+                     XVEL500(i,j) = 0.5*( u(i,k,j) + u(i+1,k,j) ) * wgt_k &
+                          +  0.5*( u(i,k+1,j) + u(i+1,k+1,j)  ) * (1. - wgt_k)
+                     YVEL500(i,j) = 0.5*( v(i,k,j) + v(i,k,j+1) ) * wgt_k &
+                          +  0.5*( v(i,k+1,j) + v(i,k+1,j+1) ) * (1. - wgt_k)
+                     THETA500(i,j) = th(i,k,j) * wgt_k +  th(i,k+1,j) * (1. - wgt_k)
+                     QV500(i,j) = qv_curr(i,k,j) * wgt_k +  qv_curr(i,k+1,j) * (1. - wgt_k)
+
+                     ! following code in module_initialize_real.F, linear interpolation in log(pressure)
+                     ! assume vertical velocity levels are midway between mass levels.
+                     if((wgt_k.ge.0.5).OR.(k+2.gt.kte)) then
+                        ! 500 hPa is closer to p(i,k,j), so interpolate between w(i,k,j) and w(i,k+1,j)
+                        ! recompute weights for interpolation between p_k-1/2 and p_k+1/2
+                        kb = MAX(kts,k-1)
+                        logp_w_k = 0.5*(log(p(i,kb,j))+log(p(i,k,j)))
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        wgt_w_k = MAX(0., MIN(1., ( log(500.e2) - logp_w_kp1 ) / ( logp_w_k - logp_w_kp1 ) ) )
+                        ZVEL500(i,j) = w(i,k,j) * wgt_w_k +  w(i,k+1,j) * (1. - wgt_w_k)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '500 hPa closer to p_k --> interpolate between w_k and w_k+1'
+!$$$                           write(*,*) log(p(i,k,j)), log(500.e2), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(p(i,k+1,j))
+!$$$                           write(*,*) wgt_k, wgt_w_k
+!$$$                        end if
+                     else
+                        ! 500 hPa is closer to p(i,k+1,j), so interpolate between w(i,k+2,j) and w(i,k+1,j)
+                        kc = MIN(kte,k+2)
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        logp_w_kp2 = 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+                        wgt_w_kp2 = MAX(0., MIN(1., (  logp_w_kp1 - log(500.e2)) / ( logp_w_kp1 - logp_w_kp2 ) ) )
+                        ZVEL500(i,j) = w(i,k+2,j) * wgt_w_kp2 +  w(i,k+1,j) * (1. - wgt_w_kp2)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '500 hPa closer to p_k+1 --> interpolate between w_k+1 and w_k+2'
+!$$$                           write(*,*) log(p(i,k,j)), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(500.e2), log(p(i,k+1,j)), 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+!$$$                           write(*,*) wgt_k, wgt_w_kp2
+!$$$                        end if
+                     end if
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.500.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HDO_QV500).AND.PRESENT(O18_QV500)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HDO_QV500(:,:) = -99999.
+      O18_QV500(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.500.e2) then
+                  !     the surface pressure is above 500hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.500.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(500.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HDO_QV500(i,j) = hdo_qv(i,k,j) * wgt_k +  hdo_qv(i,k+1,j) * (1. - wgt_k)
+                     O18_QV500(i,j) = o18_qv(i,k,j) * wgt_k +  o18_qv(i,k+1,j) * (1. - wgt_k)
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.500.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HGT200).AND.PRESENT(XVEL200).AND.PRESENT(YVEL200).AND.PRESENT(ZVEL200).AND.PRESENT(THETA200).AND.PRESENT(QV200)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HGT200(:,:) = -99999.
+      XVEL200(:,:) = -99999.
+      YVEL200(:,:) = -99999.
+      ZVEL200(:,:) = -99999.
+      THETA200(:,:) = -99999.
+      QV200(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.200.e2) then
+                  !     the surface pressure is above 200hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.200.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(200.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HGT200(i,j) = z(i,k,j) * wgt_k +  z(i,k+1,j) * (1. - wgt_k)
+                     XVEL200(i,j) = 0.5*( u(i,k,j) + u(i+1,k,j) ) * wgt_k &
+                          +  0.5*( u(i,k+1,j) + u(i+1,k+1,j)  ) * (1. - wgt_k)
+                     YVEL200(i,j) = 0.5*( v(i,k,j) + v(i,k,j+1) ) * wgt_k &
+                          +  0.5*( v(i,k+1,j) + v(i,k+1,j+1) ) * (1. - wgt_k)
+                     THETA200(i,j) = th(i,k,j) * wgt_k +  th(i,k+1,j) * (1. - wgt_k)
+                     QV200(i,j) = qv_curr(i,k,j) * wgt_k +  qv_curr(i,k+1,j) * (1. - wgt_k)
+
+                     ! following code in module_initialize_real.F, linear interpolation in log(pressure)
+                     ! assume vertical velocity levels are midway between mass levels.
+                     if((wgt_k.ge.0.5).OR.(k+2.gt.kte)) then
+                        ! 200 hPa is closer to p(i,k,j), so interpolate between w(i,k,j) and w(i,k+1,j)
+                        ! recompute weights for interpolation between p_k-1/2 and p_k+1/2
+                        kb = MAX(kts,k-1)
+                        logp_w_k = 0.5*(log(p(i,kb,j))+log(p(i,k,j)))
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        wgt_w_k = MAX(0., MIN(1., ( log(200.e2) - logp_w_kp1 ) / ( logp_w_k - logp_w_kp1 ) ) )
+                        ZVEL200(i,j) = w(i,k,j) * wgt_w_k +  w(i,k+1,j) * (1. - wgt_w_k)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '200 hPa closer to p_k --> interpolate between w_k and w_k+1'
+!$$$                           write(*,*) log(p(i,k,j)), log(200.e2), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(p(i,k+1,j))
+!$$$                           write(*,*) wgt_k, wgt_w_k
+!$$$                        end if
+                     else
+                        ! 200 hPa is closer to p(i,k+1,j), so interpolate between w(i,k+2,j) and w(i,k+1,j)
+                        kc = MIN(kte,k+2)
+                        logp_w_kp1 = 0.5*(log(p(i,k,j))+log(p(i,k+1,j)))
+                        logp_w_kp2 = 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+                        wgt_w_kp2 = MAX(0., MIN(1., (  logp_w_kp1 - log(200.e2)) / ( logp_w_kp1 - logp_w_kp2 ) ) )
+                        ZVEL200(i,j) = w(i,k+2,j) * wgt_w_kp2 +  w(i,k+1,j) * (1. - wgt_w_kp2)
+
+!$$$                        if(i+j.eq.5) then
+!$$$                           write(*,*) '200 hPa closer to p_k+1 --> interpolate between w_k+1 and w_k+2'
+!$$$                           write(*,*) log(p(i,k,j)), 0.5*(log(p(i,k,j))+log(p(i,k+1,j))), log(200.e2), log(p(i,k+1,j)), 0.5*(log(p(i,k+1,j))+log(p(i,kc,j)))
+!$$$                           write(*,*) wgt_k, wgt_w_kp2
+!$$$                        end if
+                     end if
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.200.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+   IF(PRESENT(HDO_QV200).AND.PRESENT(O18_QV200)) THEN
+      !bloss: I know this would be better placed elsewhere, but this should work.
+      HDO_QV200(:,:) = -99999.
+      O18_QV200(:,:) = -99999.
+      do ij = 1,num_tiles
+         do j = j_start(ij),j_end(ij)
+            do i = i_start(ij),i_end(ij)
+               if(1.5*p(i,1,j)-0.5*p(i,2,j).gt.200.e2) then
+                  !     the surface pressure is above 200hPa
+               do k = kts,kte
+                  if(p(i,k+1,j).lt.200.e2) then
+                     ! following code in module_initialize_real.F,
+                     !   linear interpolation in log(pressure)
+                     wgt_k = MAX(0., MIN(1., ( log(200.e2) - log(p(i,k+1,j)) ) / ( log(p(i,k,j)) - log(p(i,k+1,j)) ) ) )
+                     HDO_QV200(i,j) = hdo_qv(i,k,j) * wgt_k +  hdo_qv(i,k+1,j) * (1. - wgt_k)
+                     O18_QV200(i,j) = o18_qv(i,k,j) * wgt_k +  o18_qv(i,k+1,j) * (1. - wgt_k)
+                     EXIT
+                  end if
+               end do
+               end if ! if(surfacepressure.lt.200.e2)
+            end do
+         end do
+      end do
+   end IF
+
+
+!bloss: End vapor path diagnostics
+
    CALL wrf_debug ( 200 , 'microphysics_driver: returning from' )
 
    RETURN
 
    END SUBROUTINE microphysics_driver
+
+      !bloss: extra utility subroutines
+   SUBROUTINE accumulate_water_path(ims,ime,jms,jme,kms,kme, &
+        kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+        water_path,mass_mixing_ratio,density,deltaz)
+     implicit none
+     integer, intent(in) :: ims,ime,jms,jme,kms,kme, &
+          kts,kte,num_tiles
+     integer, dimension(num_tiles), intent(in) :: i_start,i_end,j_start,j_end
+     real, dimension(ims:ime, jms:jme), intent(inout) :: water_path
+     real, dimension(ims:ime, kms:kme, jms:jme), intent(in) :: mass_mixing_ratio, density, deltaz
+
+     integer :: ij, i, j, k
+
+     DO ij = 1 , num_tiles
+        DO j=j_start(ij),j_end(ij)
+           DO k=kts,kte
+              DO i=i_start(ij),i_end(ij)
+                 water_path(i,j)=water_path(i,j) + mass_mixing_ratio(i,k,j)*density(i,k,j)*deltaz(i,k,j)
+              END DO
+           END DO
+        END DO
+     END DO
+
+   END SUBROUTINE accumulate_water_path
+
+   SUBROUTINE accumulate_x_water_transport(ims,ime,jms,jme,kms,kme, &
+        kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+        x_water_transport,u,mass_mixing_ratio,density,deltaz)
+     implicit none
+     integer, intent(in) :: ims,ime,jms,jme,kms,kme, &
+          kts,kte,num_tiles
+     integer, dimension(num_tiles), intent(in) :: i_start,i_end,j_start,j_end
+     real, dimension(ims:ime, jms:jme), intent(inout) :: x_water_transport
+     real, dimension(ims:ime, kms:kme, jms:jme), intent(in) :: u, mass_mixing_ratio, density, deltaz
+
+     integer :: ij, i, j, k
+
+     DO ij = 1 , num_tiles
+        DO j=j_start(ij),j_end(ij)
+           DO k=kts,kte
+              DO i=i_start(ij),i_end(ij)
+                 x_water_transport(i,j)=x_water_transport(i,j) + mass_mixing_ratio(i,k,j)*density(i,k,j)*deltaz(i,k,j) &
+                      *0.5*(u(i,k,j)+u(i+1,k,j))
+              END DO
+           END DO
+        END DO
+     END DO
+
+   END SUBROUTINE accumulate_x_water_transport
+
+   SUBROUTINE accumulate_y_water_transport(ims,ime,jms,jme,kms,kme, &
+        kts,kte,num_tiles,i_start,i_end,j_start,j_end, &
+        y_water_transport,v, mass_mixing_ratio,density,deltaz)
+     implicit none
+     integer, intent(in) :: ims,ime,jms,jme,kms,kme, &
+          kts,kte,num_tiles
+     integer, dimension(num_tiles), intent(in) :: i_start,i_end,j_start,j_end
+     real, dimension(ims:ime, jms:jme), intent(inout) :: y_water_transport
+     real, dimension(ims:ime, kms:kme, jms:jme), intent(in) :: v, mass_mixing_ratio, density, deltaz
+
+     integer :: ij, i, j, k
+
+     DO ij = 1 , num_tiles
+        DO j=j_start(ij),j_end(ij)
+           DO k=kts,kte
+              DO i=i_start(ij),i_end(ij)
+                 y_water_transport(i,j)=y_water_transport(i,j) + mass_mixing_ratio(i,k,j)*density(i,k,j)*deltaz(i,k,j) &
+                      *0.5*(v(i,k,j)+v(i,k,j+1))
+              END DO
+           END DO
+        END DO
+     END DO
+
+   END SUBROUTINE accumulate_y_water_transport
 
 END MODULE module_microphysics_driver
