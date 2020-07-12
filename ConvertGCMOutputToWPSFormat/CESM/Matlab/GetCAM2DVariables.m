@@ -91,9 +91,9 @@ end
         end
         w2 = 1 - w1;
         
-% $$$         disp(time_h0)
-% $$$         disp(target_time)
-% $$$         disp([i1 w1 w2])
+%disp(time_h0)
+%disp(sprintf('Target_time = %.3g, i1/i2 = %d %d, w1/w2 = %g %g', ...
+%	     target_time,i1,i2,w1,w2))
 
         var_in = squeeze(w1*var(:,:,i1) + w2*var(:,:,i2));
         clear var
@@ -102,6 +102,11 @@ end
     var_in = double(var_in);
 
     switch WPSname
+     case {'SKINTEMP '}
+      % require that reported skin temperature be above 175K
+      %   apparently, some six-hourly temperatures from CAM fail on the TS<170K check in WPS
+      value = max(175,var_in);
+
      case {'RH       '}
       % compute RH with respect to liquid for reference height
       ps = double(ncread(cam.nc,'PS',start,count));
@@ -165,7 +170,9 @@ end
             + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_HDO');
         value_SOILSNOW = 1000*( (soilsnow_HDO-soilsnow)./(eps + soilsnow) );
 
-        value_SOILSNOW(soilsnow==0) = NaN;
+        % only use the soilsnow delta over full land points
+        landfrac = ncread(cam.nc_cam_h0,'LANDFRAC');
+        value_SOILSNOW(soilsnow==0 | landfrac<1) = NaN;
 
         % trim to size
         value_SOILSNOW = value_SOILSNOW(:,cam.latind);
@@ -174,6 +181,10 @@ end
         ind = find(~isnan(value_SOILSNOW));
         value(ind) = value_SOILSNOW(ind);
       end
+
+      % apply physically-based but arbitrary limits on surface flux isotope ratios
+      value(value<-600) = -600;
+      value(value>100) = 100;
 
      case {'DO18QFX  '}
 
@@ -227,7 +238,9 @@ end
             + ncread(cam.nc_clm_h0,'SOILLIQICE_10CM_H218O');
         value_SOILSNOW = 1000*( (soilsnow_H218O-soilsnow)./(eps + soilsnow) );
 
-        value_SOILSNOW(soilsnow==0) = NaN;
+        % only use the soilsnow delta over full land points
+        landfrac = ncread(cam.nc_cam_h0,'LANDFRAC');
+        value_SOILSNOW(soilsnow==0 | landfrac<1) = NaN;
 
         % trim to size
         value_SOILSNOW = value_SOILSNOW(:,cam.latind);
@@ -236,6 +249,10 @@ end
         ind = find(~isnan(value_SOILSNOW));
         value(ind) = value_SOILSNOW(ind);
       end
+
+      % apply physically-based but arbitrary limits on surface flux isotope ratios
+      value(value<-80) = -80;
+      value(value>15) = 15;
 
      case {'DHDOSURF '}
       % this applies to evaporation water, so that the value of
