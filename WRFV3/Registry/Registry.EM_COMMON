@@ -1374,6 +1374,84 @@ state    real  O18_GRAUPELNC        ij      misc        1         -      rhdu   
 state    real  O18_SNOWNCV          ij      misc        1         -      r        "O18_SNOWNCV"               "TIME-STEP NONCONVECTIVE O18 SNOW AND ICE (rel. to SMOW)"                    "mm"
 state    real  O18_GRAUPELNCV       ij      misc        1         -      r        "O18_GRAUPELNCV"            "TIME-STEP NONCONVECTIVE O18 GRAUPEL (rel. to SMOW)"                         "mm"
 
+#..Begin addition (bloss/wiso): water path outputs from Thompson for each water species and isotopologue.  These should serve as an incomplete proxy for output of the full 3D fields, which seems prohibitive in terms of storage.
+
+state    real  VAPORWP          ij  misc    1     -  rh2   "VAPORWP"               "WATER VAPOR PATH"                                                   "kg m-2"      
+state    real  CLIQWP           ij  misc    1     -  rh2   "CLIQWP"                "CLOUD LIQUID WATER PATH"                                            "kg m-2"      
+state    real  CICEWP           ij  misc    1     -  rh2   "CICEWP"                "CLOUD ICE WATER PATH"                                               "kg m-2"      
+state    real  RAINWP           ij  misc    1     -  rh2   "RAINWP"                "RAIN WATER PATH"                                                    "kg m-2"      
+state    real  SNOWWP           ij  misc    1     -  rh2   "SNOWWP"                "SNOW WATER PATH"                                                    "kg m-2"      
+state    real  GRAUWP           ij  misc    1     -  rh2   "GRAUWP"                "GRAUPEL WATER PATH"                                                 "kg m-2"      
+
+state    real  HDO_VAPORWP      ij  misc    1     -  rh2   "HDO_VAPORWP"           "HDO WATER VAPOR PATH (relative to SMOW)"                            "kg m-2"      
+state    real  HDO_CLIQWP       ij  misc    1     -  rh2   "HDO_CLIQWP"            "HDO CLOUD LIQUID WATER PATH (relative to SMOW)"                     "kg m-2"      
+state    real  HDO_CICEWP       ij  misc    1     -  rh2   "HDO_CICEWP"            "HDO CLOUD ICE WATER PATH (relative to SMOW)"                        "kg m-2"      
+state    real  HDO_RAINWP       ij  misc    1     -  rh2   "HDO_RAINWP"            "HDO RAIN WATER PATH (relative to SMOW)"                             "kg m-2"      
+state    real  HDO_SNOWWP       ij  misc    1     -  rh2   "HDO_SNOWWP"            "HDO SNOW WATER PATH (relative to SMOW)"                             "kg m-2"      
+state    real  HDO_GRAUWP       ij  misc    1     -  rh2   "HDO_GRAUWP"            "HDO GRAUPEL WATER PATH (relative to SMOW)"                          "kg m-2"      
+
+state    real  O18_VAPORWP      ij  misc    1     -  rh2   "O18_VAPORWP"           "O18 WATER VAPOR PATH (relative to SMOW)"                            "kg m-2"      
+state    real  O18_CLIQWP       ij  misc    1     -  rh2   "O18_CLIQWP"            "O18 CLOUD LIQUID WATER PATH (relative to SMOW)"                     "kg m-2"      
+state    real  O18_CICEWP       ij  misc    1     -  rh2   "O18_CICEWP"            "O18 CLOUD ICE WATER PATH (relative to SMOW)"                        "kg m-2"      
+state    real  O18_RAINWP       ij  misc    1     -  rh2   "O18_RAINWP"            "O18 RAIN WATER PATH (relative to SMOW)"                             "kg m-2"      
+state    real  O18_SNOWWP       ij  misc    1     -  rh2   "O18_SNOWWP"            "O18 SNOW WATER PATH (relative to SMOW)"                             "kg m-2"      
+state    real  O18_GRAUWP       ij  misc    1     -  rh2   "O18_GRAUWP"            "O18 GRAUPEL WATER PATH (relative to SMOW)"                          "kg m-2"      
+
+state    real  QVLOW          ij  misc    1     -  rh   "QVLOW"               "LOWEST-LEVEL WATER VAPOR MASS MIXING RATIO"                                                   "kg KG-1"      
+state    real  HDO_QVLOW      ij  misc    1     -  rh   "HDO_QVLOW"               "LOWEST-LEVEL HDO WATER VAPOR MASS MIXING RATIO (RELATIVE TO SMOW)"                                                   "kg KG-1"      
+state    real  O18_QVLOW      ij  misc    1     -  rh   "O18_QVLOW"               "LOWEST-LEVEL O18 WATER VAPOR MASS MIXING RATIO (RELATIVE TO SMOW)"                                                   "kg KG-1"      
+
+
+
+#..Begin addition (bloss/wiso): vertically-integrated total water transport from Thompson for each water species and isotopologue.  These may help provide insight into the behavior of simulations when full 3D outputs of all hydrometeors is prohibitive because of storage requirements.
+
+state    real  IWTX         ij     misc      1     -      rh2       "IWTX"          "INTEGRATED WATER TRANSPORT IN X-DIRECTION"                                  "kg m-1 s-1"
+state    real  IWTY         ij     misc      1     -      rh2       "IWTY"          "INTEGRATED WATER TRANSPORT IN Y-DIRECTION"                                  "kg m-1 s-1"
+state    real  HDO_IWTX     ij     misc      1     -      rh2       "HDO_IWTX"      "HDO INTEGRATED WATER TRANSPORT IN X-DIRECTION (relative to SMOW)"           "kg m-1 s-1"
+state    real  HDO_IWTY     ij     misc      1     -      rh2       "HDO_IWTY"      "HDO INTEGRATED WATER TRANSPORT IN Y-DIRECTION (relative to SMOW)"           "kg m-1 s-1"  
+state    real  O18_IWTX     ij     misc      1     -      rh2       "O18_IWTX"      "O18 INTEGRATED WATER TRANSPORT IN X-DIRECTION (relative to SMOW)"           "kg m-1 s-1"  
+state    real  O18_IWTY     ij     misc      1     -      rh2       "O18_IWTY"      "O18 INTEGRATED WATER TRANSPORT IN Y-DIRECTION (relative to SMOW)"           "kg m-1 s-1"
+
+state    real  CLOUDTOPHGT  ij     misc      1     -      rh2       "CLOUDTOPHGT"   "CLOUD TOP HEIGHT (highest height where CWP+IWP above exceeds 0.01 kg m-2)"  "m"
+state    real  ECHOTOPHGT   ij     misc      1     -      rh2       "ECHOTOPHGT"    "ECHO TOP HEIGHT (highest height where QR+QS+QG exceeds 1e-6 kg kg-1)"       "m"
+
+#bloss: some circulation statistics at different heights
+state    real  HGT850   ij     misc      1     -      rh2       "HGT850"   "HEIGHT OF 850 hPa SURFACE"  "m"
+state    real  XVEL850   ij     misc      1     -      rh2       "XVEL850"   "VALUE OF U ON 850 hPa SURFACE"  "m s-1"
+state    real  YVEL850   ij     misc      1     -      rh2       "YVEL850"   "VALUE OF V ON 850 hPa SURFACE"  "m s-1"
+state    real  ZVEL850   ij     misc      1     -      rh2       "ZVEL850"   "VALUE OF W ON 850 hPa SURFACE"  "m s-1"
+state    real  THETA850   ij     misc      1     -      rh2       "THETA850"   "VALUE OF POTENTIAL TEMPERATURE ON 850 hPa SURFACE"  "K"
+state    real  QV850   ij     misc      1     -      rh2       "QV850"   "VALUE OF WATER VAPOR MASS MIXING RATIO ON 850 hPa SURFACE"  "kg kg-1"
+state    real  HDO_QV850   ij     misc      1     -      rh2       "HDO_QV850"   "VALUE OF HDO WATER VAPOR MASS MIXING RATIO ON 850 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+state    real  O18_QV850   ij     misc      1     -      rh2       "O18_QV850"   "VALUE OF O18 WATER VAPOR MASS MIXING RATIO ON 850 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+
+state    real  HGT700   ij     misc      1     -      rh2       "HGT700"   "HEIGHT OF 700 hPa SURFACE"  "m"
+state    real  XVEL700   ij     misc      1     -      rh2       "XVEL700"   "VALUE OF U ON 700 hPa SURFACE"  "m s-1"
+state    real  YVEL700   ij     misc      1     -      rh2       "YVEL700"   "VALUE OF V ON 700 hPa SURFACE"  "m s-1"
+state    real  ZVEL700   ij     misc      1     -      rh2       "ZVEL700"   "VALUE OF W ON 700 hPa SURFACE"  "m s-1"
+state    real  THETA700   ij     misc      1     -      rh2       "THETA700"   "VALUE OF POTENTIAL TEMPERATURE ON 700 hPa SURFACE"  "K"
+state    real  QV700   ij     misc      1     -      rh2       "QV700"   "VALUE OF WATER VAPOR MASS MIXING RATIO ON 700 hPa SURFACE"  "kg kg-1"
+state    real  HDO_QV700   ij     misc      1     -      rh2       "HDO_QV700"   "VALUE OF HDO WATER VAPOR MASS MIXING RATIO ON 700 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+state    real  O18_QV700   ij     misc      1     -      rh2       "O18_QV700"   "VALUE OF O18 WATER VAPOR MASS MIXING RATIO ON 700 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+
+state    real  HGT500   ij     misc      1     -      rh2       "HGT500"   "HEIGHT OF 500 hPa SURFACE"  "m"
+state    real  XVEL500   ij     misc      1     -      rh2       "XVEL500"   "VALUE OF U ON 500 hPa SURFACE"  "m s-1"
+state    real  YVEL500   ij     misc      1     -      rh2       "YVEL500"   "VALUE OF V ON 500 hPa SURFACE"  "m s-1"
+state    real  ZVEL500   ij     misc      1     -      rh2       "ZVEL500"   "VALUE OF W ON 500 hPa SURFACE"  "m s-1"
+state    real  THETA500   ij     misc      1     -      rh2       "THETA500"   "VALUE OF POTENTIAL TEMPERATURE ON 500 hPa SURFACE"  "K"
+state    real  QV500   ij     misc      1     -      rh2       "QV500"   "VALUE OF WATER VAPOR MASS MIXING RATIO ON 500 hPa SURFACE"  "kg kg-1"
+state    real  HDO_QV500   ij     misc      1     -      rh2       "HDO_QV500"   "VALUE OF HDO WATER VAPOR MASS MIXING RATIO ON 500 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+state    real  O18_QV500   ij     misc      1     -      rh2       "O18_QV500"   "VALUE OF O18 WATER VAPOR MASS MIXING RATIO ON 500 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+
+state    real  HGT200   ij     misc      1     -      rh2       "HGT200"   "HEIGHT OF 200 hPa SURFACE"  "m"
+state    real  XVEL200   ij     misc      1     -      rh2       "XVEL200"   "VALUE OF U ON 200 hPa SURFACE"  "m s-1"
+state    real  YVEL200   ij     misc      1     -      rh2       "YVEL200"   "VALUE OF V ON 200 hPa SURFACE"  "m s-1"
+state    real  ZVEL200   ij     misc      1     -      rh2       "ZVEL200"   "VALUE OF W ON 200 hPa SURFACE"  "m s-1"
+state    real  THETA200   ij     misc      1     -      rh2       "THETA200"   "VALUE OF POTENTIAL TEMPERATURE ON 200 hPa SURFACE"  "K"
+state    real  QV200   ij     misc      1     -      rh2       "QV200"   "VALUE OF WATER VAPOR MASS MIXING RATIO ON 200 hPa SURFACE"  "kg kg-1"
+state    real  HDO_QV200   ij     misc      1     -      rh2       "HDO_QV200"   "VALUE OF HDO WATER VAPOR MASS MIXING RATIO ON 200 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+state    real  O18_QV200   ij     misc      1     -      rh2       "O18_QV200"   "VALUE OF O18 WATER VAPOR MASS MIXING RATIO ON 200 hPa SURFACE (relative to SMOW)"  "kg kg-1"
+
 #bloss: accumulated volumetric tendencies of microphysical transformations within the Thompson microphysics.
 
 state    real  QLIQ_AUTO           ikj      misc        1         -      rhdu     "QLIQ_AUTO"                "ACCUMULATED TENDENCY DUE TO AUTOCONVERSION OF CLOUD LIQUID TO RAIN"              "kg kg-1"      
@@ -1411,6 +1489,9 @@ state    real  O18_PCP_SED           ikj      misc        1         -      rhdu 
 state    real  O18_PCP_DEP           ikj      misc        1         -      rhdu     "O18_PCP_DEP"                "ACCUMULATED H2O18 TENDENCY OF VAPOR DEPOSITION ONTO RAIN/SNOW/GRAUPEL"              "kg kg-1"      
 state    real  O18_PCP_SUB           ikj      misc        1         -      rhdu     "O18_PCP_SUB"                "ACCUMULATED O18 TENDENCY OF VAPOR SUBLIMATION FROM SNOW/GRAUPEL"              "kg kg-1"      
 state    real  O18_PCP_REVP          ikj      misc        1         -      rhdu     "O18_PCP_REVP"                "ACCUMULATED O18 TENDENCY OF EVAPORATION FROM RAIN"                           "kg kg-1"      
+
+state    real   HDO_SFCEVP           ij     misc        1         -      r                                          "HDO_SFCEVP"           "ACCUMULATED HDO SURFACE EVAPORATION (relative to SMOW)" "kg m-2"
+state    real   O18_SFCEVP           ij     misc        1         -      r                                          "O18_SFCEVP"           "ACCUMULATED H218O SURFACE EVAPORATION (relative to SMOW)" "kg m-2"
 
 #..End addition (bloss/wiso): isotopic precipitation/microphysical tendencies
 
