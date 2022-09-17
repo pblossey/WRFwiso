@@ -17,7 +17,7 @@ Notes
 TODO
  + Getting Started Guide
  + HOWTO for running idealized cases in WRFV3: test/em_hill2d_x and test/em_seabreeze2d_x
- + HOWTO for running real cases
+ + HOWTO for running real cases, including input of water isotopic fields from WPS.
  + HOWTO for running Antarctica simulations downscaled from iCESM
  + Description of implementation
 
